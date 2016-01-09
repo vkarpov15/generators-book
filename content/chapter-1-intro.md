@@ -49,7 +49,8 @@ const generatorFunction = function*() {
 };
 ```
 
-<br><div class="page-num">1</div><br><br><br>
+<br><br><br><br><br>
+<br>
 
 Let's see what happens when you call `next()` on the resulting generator.
 

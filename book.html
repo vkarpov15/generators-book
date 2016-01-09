@@ -8,8 +8,12 @@
   font-size: 24px;
 }
 
-h1 {
+h1,h2 {
   padding-top: 100px;
+  page-break-before: always;
+}
+
+.page-break {
   page-break-before: always;
 }
 
@@ -47,8 +51,8 @@ a {
 }
 
 .page-num {
-  width: 100%;
-  text-align: center;
+  position: absolute;
+  right: 50px;
   font-size: 0.75em;
   font-color: #333333;
 }
@@ -238,53 +242,51 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 </div>
 
       <h1 id="table-of-contents">Table of Contents</h1>
-<h2 id="1-getting-started-with-generators-2-2-">1. Getting Started With Generators <a href="#2">2</a></h2>
+<h3 id="1-getting-started-with-generators-1-2-">1. Getting Started With Generators <a href="#2">1</a></h3>
 <ol>
-<li>What is a Generator? <a href="#2">2</a></li>
-<li>Case Study: Async Fibonacci</li>
+<li>What is a Generator? <a href="#2">1</a></li>
+<li>Case Study: Async Fibonacci <a href="#3">3</a></li>
 <li>For/Of Loops</li>
 <li>Exceptions</li>
 <li>Case Study: Handling Async Errors</li>
 </ol>
-<h2 id="2-coroutines">2. Coroutines</h2>
+<h3 id="2-coroutines">2. Coroutines</h3>
 <ol>
 <li>How Does Co Work?</li>
-<li>Writing a Basic Loop</li>
 <li>Using Thunks</li>
 <li>Limitations</li>
 <li>The Real Implementation of Co</li>
 <li>Case Study: HTTP Requests with Co</li>
 </ol>
-<h2 id="3-koa-and-middleware">3. Koa and Middleware</h2>
+<h3 id="3-koa-and-middleware">3. Koa and Middleware</h3>
 <ol>
 <li>The Composition Module</li>
 <li>Writing Your Own Generator-Based Middleware</li>
 <li>Introducing Koa</li>
 <li>Case Study: Koa Error Handling Middleware</li>
 </ol>
-<h2 id="4-transpiling">4. Transpiling</h2>
+<h3 id="4-transpiling">4. Transpiling</h3>
 <ol>
 <li>Introducing <code>regenerator</code></li>
 <li>Parsing Generators With Esprima</li>
 <li>Write Your Own Transpiler</li>
 </ol>
-<h2 id="5-moving-on">5. Moving On</h2>
+<h3 id="5-moving-on">5. Moving On</h3>
 
       <h1 id="chapter-1-getting-started">Chapter 1: Getting Started</h1>
-<h2 id="what-is-a-generator-">What is a Generator?</h2>
 <p>Generators are a powerful new feature in ES2015. Generators are far from a
 new programming construct - they first appeared in 1975 and Python has had
 them since Python 2.2 in 2001. However, as you&#39;ll see, generators are
 even more powerful in an event-driven language like JavaScript. In JavaScript
 (assuming Node.js &gt;= 4.0.0), a <strong>generator function</strong> is defined as shown below.</p>
-<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
   <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>);
 };
 </code></pre>
 <p>However, if you run <code>generatorFunction</code>, you&#39;ll notice that the return value
 is an object.</p>
 <pre><code>$ node
-&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{ <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>); };
+&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{ <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>); };
 <span class="hljs-literal">undefined</span>
 &gt; generatorFunction()
 {}
@@ -294,7 +296,7 @@ a generator function. A generator object has a single function, <code>next()</co
 If you execute the generator object&#39;s <code>next()</code> function, you&#39;ll notice
 that Node.js printed &#39;Hello, World!&#39; to the screen.</p>
 <pre><code>$ node
-&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{ <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>); };
+&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{ <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>); };
 <span class="hljs-literal">undefined</span>
 &gt; generatorFunction()
 {}
@@ -305,14 +307,15 @@ Hello, World!
 </code></pre><p>Notice that <code>next()</code> returned an object, <code>{ value: undefined, done: true }</code>.
 The meaning of this object is tied to the <code>yield</code> keyword. To introduce you
 to the <code>yield</code> keyword, consider the following generator function.</p>
-<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
   <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>;
 };
 </code></pre>
-<p><br><div class="page-num">1</div><br><br><br></p>
+<p><br><br><br><br><br>
+<br></p>
 <p>Let&#39;s see what happens when you call <code>next()</code> on the resulting generator.</p>
 <pre><code>$ node
-&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{ <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>; };
+&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{ <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>; };
 <span class="hljs-literal">undefined</span>
 &gt; <span class="hljs-keyword">var</span> generator = generatorFunction();
 <span class="hljs-literal">undefined</span>
@@ -334,12 +337,12 @@ interpreter executes the generator function until the first <code>yield</code> s
 When you call <code>generator.next()</code> again, the generator function picks up where
 it left off. You can think of a generator as a function that can &quot;return&quot;
 multiple values.</p>
-<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
   <span class="hljs-keyword">let</span> message = <span class="hljs-string">'Hello'</span>;
   <span class="hljs-keyword">yield</span> message;
   message += <span class="hljs-string">', World!'</span>;
   <span class="hljs-keyword">yield</span> message;
-}();
+};
 
 <span class="hljs-keyword">const</span> generator = generatorFunction();
 <span class="hljs-comment">// { value: 'Hello', done: false };</span>
@@ -349,6 +352,107 @@ multiple values.</p>
 <span class="hljs-comment">// { value: undefined, done: true }</span>
 <span class="hljs-keyword">const</span> v3 = generator.next();
 </code></pre>
+<h3 id="re-entry">Re-entry</h3>
+<p>The most important detail from the above example is that, when <code>yield</code>
+executes, the generator function stops executing until the next time you call
+<code>generator.next()</code>. You can call <code>generator.next()</code> whenever you want, even in
+a <code>setTimeout()</code>. The JavaScript interpreter will re-enter the generator
+function with the same state that it left off with.</p>
+<p><br>
+<br></p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">while</span> (i &lt; <span class="hljs-number">3</span>) {
+    <span class="hljs-keyword">yield</span> i;
+    ++i;
+  }
+};
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+
+<span class="hljs-keyword">let</span> x = generator.next(); <span class="hljs-comment">// { value: 0, done: false }</span>
+setTimeout(() =&gt; {
+  x = generator.next(); <span class="hljs-comment">// { value: 1, done: false }</span>
+  x = generator.next(); <span class="hljs-comment">// { value: 2, done: false }</span>
+  x = generator.next(); <span class="hljs-comment">// { value: undefined, done: true }</span>
+}, <span class="hljs-number">50</span>);
+</code></pre>
+<h3 id="-yield-vs-return-revisited"><code>yield</code> vs <code>return</code> revisited</h3>
+<p>You may be wondering what happens when you use <code>return</code>
+instead of <code>yield</code> in a generator. As you might expect,
+<code>return</code> behaves similarly to <code>yield</code>, except for
+<code>done</code> is set to true.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> <span class="hljs-string">'Hello, World!'</span>;
+};
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+
+<span class="hljs-comment">// { value: 'Hello, World!', done: true }</span>
+<span class="hljs-keyword">const</span> v = generator.next();
+</code></pre>
+<h2 id="case-study-async-fibonacci">Case Study: Async Fibonacci</h2>
+<p>The fact that you can execute <code>generator.next()</code> asynchronously hints at
+why generators are so useful. You can execute <code>generator.next()</code> synchronously
+or asynchronously without changing the implementation of the generator
+function.</p>
+<p>For instance, lets say you wrote a generator
+function that computes the Fibonacci Sequence. Note that generator functions
+can take parameters like any function.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> fibonacciGenerator = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">n</span>) </span>{
+  <span class="hljs-keyword">let</span> back2 = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">let</span> back1 = <span class="hljs-number">1</span>;
+  <span class="hljs-keyword">let</span> cur = <span class="hljs-number">1</span>;
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; n - <span class="hljs-number">1</span>; ++i) {
+    cur = back2 + back1;
+    back2 = back1;
+    back1 = cur;
+    <span class="hljs-keyword">yield</span> cur;
+  }
+
+  <span class="hljs-keyword">return</span> cur;
+};
+</code></pre>
+<p>You could compute the n-th Fibonacci number synchronously using the code
+below.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> fibonacci = fibonacciGenerator(<span class="hljs-number">10</span>);
+<span class="hljs-keyword">let</span> it;
+<span class="hljs-keyword">for</span> (it = fibonacci.next(); !it.done; it = fibonacci.next()) {}
+it.value; <span class="hljs-comment">// 55, the 10th fibonacci number</span>
+</code></pre>
+<p>However, computing the n-th Fibonacci number synchronously is not a hard
+problem without generators. To make things interesting, let&#39;s say you wanted
+to compute a very large Fibonacci number <strong>without blocking the event loop</strong>.
+Normally, a JavaScript for loop would block the event loop. In other words,
+no other JavaScript code can execute until the for loop in the previous
+example is done. This can get problematic if you want to compute the 100
+millionth Fibonacci number in an Express route handler. Without generators,
+breaking up a long-running calculation can be cumbersome.</p>
+<p><div class="page-break"></div>
+<br><br></p>
+<p>However, since you have a generator function that yields after each iteration
+of the for loop, you can call <code>generator.next()</code> in a <code>setInterval()</code>
+function. This will compute the next Fibonacci number with each iteration of
+the event loop, and so won&#39;t prevent Node.js from responding from incoming
+requests. You can make your Fibonacci calculation asynchronous without
+changing the generator function!</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> fibonacci = fibonacciGenerator(<span class="hljs-number">10</span>);
+<span class="hljs-comment">// And compute one new Fibonacci number with each iteration</span>
+<span class="hljs-comment">// through the event loop.</span>
+<span class="hljs-keyword">const</span> interval = setInterval(() =&gt; {
+  <span class="hljs-keyword">const</span> res = fibonacci.next();
+  <span class="hljs-keyword">if</span> (res.done) {
+    clearInterval(interval);
+    res.value; <span class="hljs-comment">// 55, the 10th fibonacci number</span>
+  }
+}, <span class="hljs-number">0</span>);
+</code></pre>
 
     </div>
+    <script type="text/javascript">
+      var pageHeights = [3400, 5080, 6760, 8440, 10120];
+      for (var i = 2; i < 7; ++i) {
+        document.write('<div class="page-num" style="top:' + pageHeights[i - 2] + 'px;">' + (i - 1) + '</div>');
+      }
+    </script>
   

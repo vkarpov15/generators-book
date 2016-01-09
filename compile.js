@@ -18,7 +18,7 @@ require('acquit-markdown')(acquit, { it: true });
 var highlight = require('highlight.js');
 marked.setOptions({
   highlight: function(code) {
-    return highlight.highlightAuto(code).value;
+    return highlight.highlight('JavaScript', code).value;
   }
 });
 
@@ -40,6 +40,8 @@ co(function*() {
     });
   }
 
+  markdown = markdown.replace(/acquit:ignore:end/g, '');
+
   const content = `
     <link href='http://fonts.googleapis.com/css?family=Titillium+Web' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
@@ -52,13 +54,23 @@ co(function*() {
       ${marked(toc.toString())}
       ${marked(markdown)}
     </div>
+    <script type="text/javascript">
+      var pageHeights = [3400, 5080, 6760, 8440, 10120];
+      for (var i = 2; i < 7; ++i) {
+        document.write('<div class="page-num" style="top:' + pageHeights[i - 2] + 'px;">' + (i - 1) + '</div>');
+      }
+    </script>
   `;
 
   yield thunkify(fs.writeFile)('./book.html', content);
 
   const browser = nightmare({ show: false });
+  browser.on('console', function(type, arg) {
+    console.log(type, '::', arg);
+  });
   yield browser.goto(`file://${__dirname}/book.html`).
-    pdf('./80-20-guide-to-es2015-generators.pdf', { marginsType: 1 });
+    pdf('./80-20-guide-to-es2015-generators.pdf', { marginsType: 1 }).
+    end();
 
   console.log('done');
   process.exit(0);

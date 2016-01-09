@@ -3,8 +3,12 @@ html {
   font-size: 24px;
 }
 
-h1 {
+h1,h2 {
   padding-top: 100px;
+  page-break-before: always;
+}
+
+.page-break {
   page-break-before: always;
 }
 
@@ -42,8 +46,8 @@ a {
 }
 
 .page-num {
-  width: 100%;
-  text-align: center;
+  position: absolute;
+  right: 50px;
   font-size: 0.75em;
   font-color: #333333;
 }
