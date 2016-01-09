@@ -1,0 +1,354 @@
+
+    <link href='http://fonts.googleapis.com/css?family=Titillium+Web' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Droid+Sans+Mono' rel='stylesheet' type='text/css'>
+    <style>
+      html {
+  font-family: 'Roboto';
+  font-size: 24px;
+}
+
+h1 {
+  padding-top: 100px;
+  page-break-before: always;
+}
+
+h1,h2,h3,h4,p,ul,ol,pre {
+  margin-left: 50px;
+  margin-right: 50px;
+}
+
+pre {
+  border: 1px solid #dfdfdf;
+  padding: 15px;
+}
+
+code {
+  font-family: 'Droid Sans Mono';
+}
+
+p {
+  line-height: 1.5em;
+}
+
+p code {
+  color: #232323;
+}
+
+li {
+  margin-left: 50px;
+}
+
+a {
+  color: black;
+  float: right;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.page-num {
+  width: 100%;
+  text-align: center;
+  font-size: 0.75em;
+  font-color: #333333;
+}
+
+.cover img {
+  position: relative;
+  left: -250px;
+  top: -8px;
+  height: 1300px;
+  margin: 0px;
+  padding: 0px;
+}
+
+.cover .info {
+  position: absolute;
+  top: 1240px;
+  left: -8px;
+  background-color: black;
+  color: white;
+  height: 441px;
+  width: 1500px;
+}
+
+.title {
+  padding-left: 50px;
+  font-family: 'Titillium Web';
+  font-size: 48pt;
+  font-weight: bold;
+}
+
+.author {
+  padding-left: 50px;
+  font-family: 'Titillium Web';
+  font-size: 36pt;
+  margin-top: 15px;
+}
+
+.top-triangle {
+  position: absolute;
+  top: 1100px;
+  left: 0px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 200px 0 0 2000px;
+  border-color: transparent transparent transparent black;
+}
+
+/*
+
+github.com style (c) Vasily Polovnyov <vast@whiteants.net>
+
+*/
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  color: #333;
+  background: #f8f8f8;
+  -webkit-text-size-adjust: none;
+}
+
+.hljs-comment,
+.diff .hljs-header,
+.hljs-javadoc {
+  color: #998;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.css .rule .hljs-keyword,
+.hljs-winutils,
+.nginx .hljs-title,
+.hljs-subst,
+.hljs-request,
+.hljs-status {
+  color: #333;
+  font-weight: bold;
+}
+
+.hljs-number,
+.hljs-hexcolor,
+.ruby .hljs-constant {
+  color: #008080;
+}
+
+.hljs-string,
+.hljs-tag .hljs-value,
+.hljs-phpdoc,
+.hljs-dartdoc,
+.tex .hljs-formula {
+  color: #d14;
+}
+
+.hljs-title,
+.hljs-id,
+.scss .hljs-preprocessor {
+  color: #900;
+  font-weight: bold;
+}
+
+.hljs-list .hljs-keyword,
+.hljs-subst {
+  font-weight: normal;
+}
+
+.hljs-class .hljs-title,
+.hljs-type,
+.vhdl .hljs-literal,
+.tex .hljs-command {
+  color: #458;
+  font-weight: bold;
+}
+
+.hljs-tag,
+.hljs-tag .hljs-title,
+.hljs-rules .hljs-property,
+.django .hljs-tag .hljs-keyword {
+  color: #000080;
+  font-weight: normal;
+}
+
+.hljs-attribute,
+.hljs-variable,
+.lisp .hljs-body {
+  color: #008080;
+}
+
+.hljs-regexp {
+  color: #009926;
+}
+
+.hljs-symbol,
+.ruby .hljs-symbol .hljs-string,
+.lisp .hljs-keyword,
+.clojure .hljs-keyword,
+.scheme .hljs-keyword,
+.tex .hljs-special,
+.hljs-prompt {
+  color: #990073;
+}
+
+.hljs-built_in {
+  color: #0086b3;
+}
+
+.hljs-preprocessor,
+.hljs-pragma,
+.hljs-pi,
+.hljs-doctype,
+.hljs-shebang,
+.hljs-cdata {
+  color: #999;
+  font-weight: bold;
+}
+
+.hljs-deletion {
+  background: #fdd;
+}
+
+.hljs-addition {
+  background: #dfd;
+}
+
+.diff .hljs-change {
+  background: #0086b3;
+}
+
+.hljs-chunk {
+  color: #aaa;
+}
+
+    </style>
+    <div id="content">
+      <div class="cover">
+  <img src="http://i.imgur.com/nG4gisP.jpg" />
+  <div class="top-triangle"></div>
+  <div class="info">
+    <div class="title">
+      The 80/20 Guide to ES2015 Generators
+    </div>
+    <div class="author">
+      Valeri Karpov
+    </div>
+  </div>
+</div>
+
+      <h1 id="table-of-contents">Table of Contents</h1>
+<h2 id="1-getting-started-with-generators-2-2-">1. Getting Started With Generators <a href="#2">2</a></h2>
+<ol>
+<li>What is a Generator? <a href="#2">2</a></li>
+<li>Case Study: Async Fibonacci</li>
+<li>For/Of Loops</li>
+<li>Exceptions</li>
+<li>Case Study: Handling Async Errors</li>
+</ol>
+<h2 id="2-coroutines">2. Coroutines</h2>
+<ol>
+<li>How Does Co Work?</li>
+<li>Writing a Basic Loop</li>
+<li>Using Thunks</li>
+<li>Limitations</li>
+<li>The Real Implementation of Co</li>
+<li>Case Study: HTTP Requests with Co</li>
+</ol>
+<h2 id="3-koa-and-middleware">3. Koa and Middleware</h2>
+<ol>
+<li>The Composition Module</li>
+<li>Writing Your Own Generator-Based Middleware</li>
+<li>Introducing Koa</li>
+<li>Case Study: Koa Error Handling Middleware</li>
+</ol>
+<h2 id="4-transpiling">4. Transpiling</h2>
+<ol>
+<li>Introducing <code>regenerator</code></li>
+<li>Parsing Generators With Esprima</li>
+<li>Write Your Own Transpiler</li>
+</ol>
+<h2 id="5-moving-on">5. Moving On</h2>
+
+      <h1 id="chapter-1-getting-started">Chapter 1: Getting Started</h1>
+<h2 id="what-is-a-generator-">What is a Generator?</h2>
+<p>Generators are a powerful new feature in ES2015. Generators are far from a
+new programming construct - they first appeared in 1975 and Python has had
+them since Python 2.2 in 2001. However, as you&#39;ll see, generators are
+even more powerful in an event-driven language like JavaScript. In JavaScript
+(assuming Node.js &gt;= 4.0.0), a <strong>generator function</strong> is defined as shown below.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>);
+};
+</code></pre>
+<p>However, if you run <code>generatorFunction</code>, you&#39;ll notice that the return value
+is an object.</p>
+<pre><code>$ node
+&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{ <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>); };
+<span class="hljs-literal">undefined</span>
+&gt; generatorFunction()
+{}
+</code></pre><p>That&#39;s because a generator function creates and returns a <strong>generator object</strong>.
+Typically, the term <strong>generator</strong> refers to a generator object rather than
+a generator function. A generator object has a single function, <code>next()</code>.
+If you execute the generator object&#39;s <code>next()</code> function, you&#39;ll notice
+that Node.js printed &#39;Hello, World!&#39; to the screen.</p>
+<pre><code>$ node
+&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{ <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello, World!'</span>); };
+<span class="hljs-literal">undefined</span>
+&gt; generatorFunction()
+{}
+&gt; generatorFunction().next()
+Hello, World!
+{ value: <span class="hljs-literal">undefined</span>, done: <span class="hljs-literal">true</span> }
+&gt;
+</code></pre><p>Notice that <code>next()</code> returned an object, <code>{ value: undefined, done: true }</code>.
+The meaning of this object is tied to the <code>yield</code> keyword. To introduce you
+to the <code>yield</code> keyword, consider the following generator function.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{
+  <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>;
+};
+</code></pre>
+<p><br><div class="page-num">1</div><br><br><br></p>
+<p>Let&#39;s see what happens when you call <code>next()</code> on the resulting generator.</p>
+<pre><code>$ node
+&gt; <span class="hljs-keyword">var</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{ <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>; };
+<span class="hljs-literal">undefined</span>
+&gt; <span class="hljs-keyword">var</span> generator = generatorFunction();
+<span class="hljs-literal">undefined</span>
+&gt; generator.next();
+{ value: <span class="hljs-string">'Hello, World!'</span>, done: <span class="hljs-literal">false</span> }
+&gt; generator.next();
+{ value: <span class="hljs-literal">undefined</span>, done: <span class="hljs-literal">true</span> }
+&gt;
+</code></pre><p>Notice that, the first time you call <code>generator.next()</code>, the <code>value</code> property
+is equal to the string your generator function yielded. You can think of
+<code>yield</code> as the generator-specific equivalent of the <code>return</code> statement.</p>
+<p>You might be wondering why the return value of <code>generator.next()</code> has a <code>done</code>
+property. The reason is tied to why <code>yield</code> is different from <code>return</code>.</p>
+<h3 id="-yield-vs-return-"><code>yield</code> vs <code>return</code></h3>
+<p>The <code>yield</code> keyword can be thought of as a <code>return</code> that allows <strong>re-entry</strong>.
+In other words, once <code>return</code> executes, the currently executing function is
+done forever. However, when you call <code>generator.next()</code>, the JavaScript
+interpreter executes the generator function until the first <code>yield</code> statement.
+When you call <code>generator.next()</code> again, the generator function picks up where
+it left off. You can think of a generator as a function that can &quot;return&quot;
+multiple values.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*<span class="hljs-params">()</span> </span>{
+  <span class="hljs-keyword">let</span> message = <span class="hljs-string">'Hello'</span>;
+  <span class="hljs-keyword">yield</span> message;
+  message += <span class="hljs-string">', World!'</span>;
+  <span class="hljs-keyword">yield</span> message;
+}();
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+<span class="hljs-comment">// { value: 'Hello', done: false };</span>
+<span class="hljs-keyword">const</span> v1 = generator.next();
+<span class="hljs-comment">// { value: 'Hello, World!', done: false }</span>
+<span class="hljs-keyword">const</span> v2 = generator.next();
+<span class="hljs-comment">// { value: undefined, done: true }</span>
+<span class="hljs-keyword">const</span> v3 = generator.next();
+</code></pre>
+
+    </div>
+  

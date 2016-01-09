@@ -1,0 +1,23 @@
+{
+  "name": "generators-book",
+  "version": "0.0.0",
+  "dependencies": {
+    "co": "4.6.0"
+  },
+  "devDependencies": {
+    "acquit": "0.4.1",
+    "acquit-ignore": "0.0.3",
+    "acquit-markdown": "0.0.4",
+    "gulp": "3.9.0",
+    "gulp-mocha": "2.2.0",
+    "highlight.js": "8.4.0",
+    "js-beautify": "1.5.10",
+    "marked": "0.3.5",
+    "mocha": "2.3.4",
+    "nightmare": "2.1.2",
+    "thunkify": "2.1.2"
+  },
+  "scripts": {
+    "test": "mocha ./chapters/*.test.js"
+  }
+}
