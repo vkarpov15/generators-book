@@ -1,12 +1,12 @@
 # Table of Contents
 
-### 1. Getting Started With Generators [1](#2)
+### 1. Getting Started With Generators [1](#1)
 
-1. What is a Generator? [1](#2)
+1. What is a Generator? [1](#1)
 2. Case Study: Async Fibonacci [3](#3)
 3. For/Of Loops [5](#5)
-4. Exceptions
-5. Case Study: Handling Async Errors
+4. Error Handling [7](#7)
+5. Case Study: Handling Async Errors [8](#8)
 
 ### 2. Coroutines
 

@@ -246,4 +246,149 @@ describe('Chapter 1: Getting Started', function() {
       }
     });
   });
+
+  describe('Error Handling', () => {
+    /** @import:content/chapter-1-exceptions-1.md */
+    it('', () => {
+      const generatorFunction = function*() {
+        throw new Error('oops!');
+      };
+
+      const generator = generatorFunction();
+      // acquit:ignore:start
+      assert.throws(function() {
+      // acquit:ignore:end
+
+      // throws an error
+      generator.next();
+
+      // acquit:ignore:start
+      });
+      // acquit:ignore:end
+    });
+
+    /** @import:content/chapter-1-exceptions-stack.md */
+    it('', (done) => {
+      const generatorFunction = function*() {
+        throw new Error('oops!');
+      };
+
+      const generator = generatorFunction();
+
+      setTimeout(() => {
+        try {
+          generator.next();
+        } catch(err) {
+          /**
+           * Error: oops!
+           * at generatorFunction (book.js:2:15)
+           * at next (native)
+           * at null._onTimeout (book.js:18:21)
+           * at Timer.listOnTimeout (timers.js:89:15)
+           */
+          err.stack;
+          // acquit:ignore:start
+          done();
+          // acquit:ignore:end
+        }
+      }, 0);
+    });
+
+    /** @import:content/chapter-1-exceptions-throw.md */
+    it('Re-entry With Error', () => {
+      const fakeFibonacciGenerator = function*() {
+        try {
+          yield 3;
+          // acquit:ignore:start
+          assert.ok(false);
+          // acquit:ignore:end
+        } catch(error) {
+          error; // Error: Expected 1, got 3
+          // acquit:ignore:start
+          assert.equal(error.toString(), 'Error: Expected 1, got 3');
+          // acquit:ignore:end
+        }
+      };
+      const fibonacci = fakeFibonacciGenerator();
+
+      const x = fibonacci.next();
+      fibonacci.throw(new Error(`Expected 1, got ${x.value}`));
+      // { value: undefined, done: true }
+      fibonacci.next();
+    });
+  });
+
+  describe('Case Study: Handling Async Errors', () => {
+    /** @import:content/chapter-1-async-errors.md */
+    it('', () => {
+      const generatorFunction = function*() {
+        const fullName = yield ['John', 'Smith'];
+        fullName; // 'John Smith'
+        // acquit:ignore:start
+        assert.equal(fullName, 'John Smith');
+        // acquit:ignore:end
+      };
+
+      const generator = generatorFunction();
+      // Execute up to the first `yield`
+      const next = generator.next();
+      // Join ['John', 'Smith'] => 'John Smith' and use it as the
+      // result of `yield`, then execute the rest of the generator function
+      generator.next(next.value.join(' '));
+    });
+
+    /** @import:content/chapter-1-async-errors-2.md */
+    it('', (done) => {
+      const async = function(callback) {
+        setTimeout(() => callback(null, 'Hello, Async!'), 10);
+      };
+
+      const generatorFunction = function*() {
+        const v = yield async;
+        v; // 'Hello, Async!'
+        // acquit:ignore:start
+        assert.equal(v, 'Hello, Async!');
+        // acquit:ignore:end
+      };
+
+      const generator = generatorFunction();
+      const fn = generator.next();
+      fn(function(error, res) {
+        generator.next(res);
+        // acquit:ignore:start
+        done();
+        // acquit:ignore:end
+      });
+    });
+
+    /** @import:content/chapter-1-async-errors-3.md */
+    it('', (done) => {
+      const async = function(callback) {
+        setTimeout(() => callback(new Error('Oops!')), 10);
+      };
+
+      const generatorFunction = function*() {
+        try {
+          yield async;
+          // acquit:ignore:start
+          assert.ok(false);
+          // acquit:ignore:end
+        } catch(error) {
+          error; // Error: Oops!
+          // acquit:ignore:start
+          assert.equal(error.toString(), 'Error: Oops!');
+          // acquit:ignore:end
+        }
+      };
+
+      const generator = generatorFunction();
+      const fn = generator.next();
+      fn(function(error, res) {
+        generator.throw(error);
+        // acquit:ignore:start
+        done();
+        // acquit:ignore:end
+      });
+    });
+  });
 });

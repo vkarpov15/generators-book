@@ -246,13 +246,13 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 </div>
 
       <h1 id="table-of-contents">Table of Contents</h1>
-<h3 id="1-getting-started-with-generators-1-2-">1. Getting Started With Generators <a href="#2">1</a></h3>
+<h3 id="1-getting-started-with-generators-1-1-">1. Getting Started With Generators <a href="#1">1</a></h3>
 <ol>
-<li>What is a Generator? <a href="#2">1</a></li>
+<li>What is a Generator? <a href="#1">1</a></li>
 <li>Case Study: Async Fibonacci <a href="#3">3</a></li>
 <li>For/Of Loops <a href="#5">5</a></li>
-<li>Exceptions</li>
-<li>Case Study: Handling Async Errors</li>
+<li>Error Handling <a href="#7">7</a></li>
+<li>Case Study: Handling Async Errors <a href="#8">8</a></li>
 </ol>
 <h3 id="2-coroutines">2. Coroutines</h3>
 <ol>
@@ -544,13 +544,146 @@ fibonacci[<span class="hljs-built_in">Symbol</span>.iterator]() === fibonacci; <
   <span class="hljs-comment">// Doesn't run!</span>
 }
 </code></pre>
+<h2 id="error-handling">Error Handling</h2>
+<p>One detail that has been glossed over so far is how generators handle
+exceptions. What happens when you divide by zero in a generator? As you
+might have guessed, the <code>generator.next()</code> call throws an error.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'oops!'</span>);
+};
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+
+<span class="hljs-comment">// throws an error</span>
+generator.next();
+</code></pre>
+<p>The error&#39;s stack trace reflects the fact that <code>next()</code> was the function
+that called the function that threw the error. In particular, if you call
+<code>next()</code> asynchronously, you will lose the original stack trace.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'oops!'</span>);
+};
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+
+setTimeout(() =&gt; {
+  <span class="hljs-keyword">try</span> {
+    generator.next();
+  } <span class="hljs-keyword">catch</span> (err) {
+    <span class="hljs-comment">/**
+     * Error: oops!
+     * at generatorFunction (book.js:2:15)
+     * at next (native)
+     * at null._onTimeout (book.js:18:21)
+     * at Timer.listOnTimeout (timers.js:89:15)
+     */</span>
+    err.stack;
+  }
+}, <span class="hljs-number">0</span>);
+</code></pre>
+<h3 id="re-entry-with-error">Re-entry With Error</h3>
+<p>When you think of generators, you need to think of 2 functions: the generator
+function itself, and the function that&#39;s calling <code>next()</code> on the generator.
+When the generator function calls <code>yield</code> or <code>return</code>, the calling function
+regains control. When the calling function calls <code>next()</code>, the generator
+function regains starts running again. There&#39;s another way the calling function
+can give control back to the generator function: the <code>throw()</code> function.</p>
+<p><br><br><br><br></p>
+<p>The <code>throw()</code> function is a way for the calling function to tell the generator
+function that something went wrong. In the generator function, this will look
+like the <code>yield</code> statement threw an error. You can then use try/catch to
+handle the error in the generator function. As you&#39;ll see in the next section,
+this pattern is indispensable for working with asynchronous code and generators.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> fakeFibonacciGenerator = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">yield</span> <span class="hljs-number">3</span>;
+  } <span class="hljs-keyword">catch</span> (error) {
+    error; <span class="hljs-comment">// Error: Expected 1, got 3</span>
+  }
+};
+<span class="hljs-keyword">const</span> fibonacci = fakeFibonacciGenerator();
+
+<span class="hljs-keyword">const</span> x = fibonacci.next();
+fibonacci.throw(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Expected 1, got <span class="hljs-subst">${x.value}</span>`</span>));
+<span class="hljs-comment">// { value: undefined, done: true }</span>
+fibonacci.next();
+</code></pre>
+<h2 id="case-study-handling-async-errors">Case Study: Handling Async Errors</h2>
+<p>Remember that there are two functions involved in generator functions: the
+generator function itself, and the function that calls <code>next()</code> on the
+generator object. So far in this book, the function that calls <code>next()</code>
+hasn&#39;t done any real work. The most complex example is the async Fibonacci
+example, which acted as a scheduler for the Fibonacci generator.</p>
+<p>One pivotal feature of generators is that the <code>next()</code> function can take
+a parameter. That parameter then becomes the return value of the <code>yield</code>
+statement in the generator function itself!</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> fullName = <span class="hljs-keyword">yield</span> [<span class="hljs-string">'John'</span>, <span class="hljs-string">'Smith'</span>];
+  fullName; <span class="hljs-comment">// 'John Smith'</span>
+};
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+<span class="hljs-comment">// Execute up to the first `yield`</span>
+<span class="hljs-keyword">const</span> next = generator.next();
+<span class="hljs-comment">// Join ['John', 'Smith'] =&gt; 'John Smith' and use it as the</span>
+<span class="hljs-comment">// result of `yield`, then execute the rest of the generator function</span>
+generator.next(next.value.join(<span class="hljs-string">' '</span>));
+</code></pre>
+<p>Once you combine this feature with the <code>throw()</code> function, you have everything
+you need to have the generator function <code>yield</code> whenever it needs to do
+an asynchronous operation. The calling function can then execute the
+asynchronous operation, <code>throw()</code> any errors that occurred, and return the
+result of the async operation using <code>next()</code>.</p>
+<p><br><br><br></p>
+<p>This means that your generator function doesn&#39;t need to worry about callbacks.
+The calling function can be responsible for running asynchronous operations
+and reporting any errors back to the generator function. For instance,
+the below example shows how to run a generator function that yields an
+asynchronous function without any errors.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> <span class="hljs-keyword">async</span> = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">callback</span>) </span>{
+  setTimeout(() =&gt; callback(<span class="hljs-literal">null</span>, <span class="hljs-string">'Hello, Async!'</span>), <span class="hljs-number">10</span>);
+};
+
+<span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> v = <span class="hljs-keyword">yield</span> <span class="hljs-keyword">async</span>;
+  v; <span class="hljs-comment">// 'Hello, Async!'</span>
+};
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+<span class="hljs-keyword">const</span> fn = generator.next();
+fn(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
+  generator.next(res);
+});
+</code></pre>
+<p>Now suppose that the <code>async</code> function returns an error. The calling function
+can then call <code>throw()</code> on the generator, and now your generator function
+can handle this asynchronous operation with try/catch! As you&#39;ll see in the
+coroutines chapter, this idea is the basis of the co library.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> <span class="hljs-keyword">async</span> = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">callback</span>) </span>{
+  setTimeout(() =&gt; callback(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Oops!'</span>)), <span class="hljs-number">10</span>);
+};
+
+<span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">yield</span> <span class="hljs-keyword">async</span>;
+  } <span class="hljs-keyword">catch</span> (error) {
+    error; <span class="hljs-comment">// Error: Oops!</span>
+  }
+};
+
+<span class="hljs-keyword">const</span> generator = generatorFunction();
+<span class="hljs-keyword">const</span> fn = generator.next();
+fn(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
+  generator.throw(error);
+});
+</code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3400;
       var delta = 1680;
       var pageHeights = [3400, 5080, 6760, 8440, 10120];
-      for (var i = 2; i < 8; ++i) {
+      for (var i = 2; i < 10; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
