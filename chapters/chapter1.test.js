@@ -148,4 +148,102 @@ describe('Chapter 1: Getting Started', function() {
       }, 0);
     });
   });
+
+  describe('For/Of Loops', () => {
+    const fibonacciGenerator = function*(n) {
+      let back2 = 0;
+      let back1 = 1;
+      let cur = 1;
+      for (let i = 0; i < n - 1; ++i) {
+        cur = back2 + back1;
+        back2 = back1;
+        back1 = cur;
+        yield cur;
+      }
+
+      return cur;
+    };
+
+    /** @import:content/chapter-1-for-of-1.md */
+    it('', () => {
+      let fibonacci = fibonacciGenerator(10);
+      // acquit:ignore:start
+      let p1 = 0;
+      let p2 = 1;
+      // acquit:ignore:end
+      for (const x of fibonacci) {
+        x; // 1, 1, 2, 3, 5, ..., 55
+        // acquit:ignore:start
+        assert.equal(p1 + p2, x);
+        p1 = p2;
+        p2 = x;
+        // acquit:ignore:end
+      }
+    });
+
+    /** @import:content/chapter-1-for-of-iterators.md */
+    it('Iterators and Iterables', () => {
+      let iterable = {};
+
+      // acquit:ignore:start
+      assert.throws(function() {
+      // acquit:ignore:end
+      for (const x of iterable) {} // Throws an error
+      // acquit:ignore:start
+      });
+      // acquit:ignore:end
+
+      // But once you add a Symbol.iterator property, everything works!
+      iterable[Symbol.iterator] = function() {
+        return fibonacciGenerator(10);
+      };
+      // acquit:ignore:start
+      let p1 = 0;
+      let p2 = 1;
+      // acquit:ignore:end
+      for (const x of iterable) {
+        x; // 1, 1, 2, 3, 5, ..., 55
+        // acquit:ignore:start
+        assert.equal(p1 + p2, x);
+        p1 = p2;
+        p2 = x;
+        // acquit:ignore:end
+      }
+    });
+
+    /** @import:content/chapter-1-for-of-symbols.md */
+    it('A Brief Overview of Symbols', () => {
+      Symbol.iterator; // Symbol(Symbol.iterator)
+
+      let iterable = {};
+      iterable[Symbol.iterator] = function() {
+        return fibonacciGenerator(10);
+      };
+
+      iterable.iterator; // undefined
+      Object.keys(iterable); // Empty array!
+      // acquit:ignore:start
+      assert.strictEqual(iterable.iterator, undefined);
+      assert.deepEqual(Object.keys(iterable), []);
+      // acquit:ignore:end
+    });
+
+    /** @import:content/chapter-1-for-of-generators.md */
+    it('Iterables and Generators', () => {
+      const fibonacci = fibonacciGenerator(10);
+      fibonacci[Symbol.iterator]() === fibonacci; // true
+      // acquit:ignore:start
+      assert.ok(fibonacci[Symbol.iterator]() === fibonacci);
+      // acquit:ignore:end
+      for (const x of fibonacci) {
+        // 1, 1, 2, 3, 5, ..., 55
+      }
+      for (const x of fibonacci) {
+        // Doesn't run!
+        // acquit:ignore:start
+        assert.ok(false);
+        // acquit:ignore:end
+      }
+    });
+  });
 });

@@ -4,7 +4,7 @@
 
 1. What is a Generator? [1](#2)
 2. Case Study: Async Fibonacci [3](#3)
-3. For/Of Loops
+3. For/Of Loops [5](#5)
 4. Exceptions
 5. Case Study: Handling Async Errors
 

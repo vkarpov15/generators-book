@@ -8,9 +8,13 @@
   font-size: 24px;
 }
 
-h1,h2 {
+h1 {
   padding-top: 100px;
   page-break-before: always;
+}
+
+h2 {
+  padding-top: 75px;
 }
 
 .page-break {
@@ -246,7 +250,7 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <ol>
 <li>What is a Generator? <a href="#2">1</a></li>
 <li>Case Study: Async Fibonacci <a href="#3">3</a></li>
-<li>For/Of Loops</li>
+<li>For/Of Loops <a href="#5">5</a></li>
 <li>Exceptions</li>
 <li>Case Study: Handling Async Errors</li>
 </ol>
@@ -396,6 +400,8 @@ instead of <code>yield</code> in a generator. As you might expect,
 why generators are so useful. You can execute <code>generator.next()</code> synchronously
 or asynchronously without changing the implementation of the generator
 function.</p>
+<p><div class="page-break"></div>
+<br><br></p>
 <p>For instance, lets say you wrote a generator
 function that computes the Fibonacci Sequence. Note that generator functions
 can take parameters like any function.</p>
@@ -428,8 +434,6 @@ no other JavaScript code can execute until the for loop in the previous
 example is done. This can get problematic if you want to compute the 100
 millionth Fibonacci number in an Express route handler. Without generators,
 breaking up a long-running calculation can be cumbersome.</p>
-<p><div class="page-break"></div>
-<br><br></p>
 <p>However, since you have a generator function that yields after each iteration
 of the for loop, you can call <code>generator.next()</code> in a <code>setInterval()</code>
 function. This will compute the next Fibonacci number with each iteration of
@@ -447,12 +451,108 @@ changing the generator function!</p>
   }
 }, <span class="hljs-number">0</span>);
 </code></pre>
+<h2 id="for-of-loops">For/Of Loops</h2>
+<p>Remember the for loop you saw for exhausting the Fibonacci generator?</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">for</span> (it = fibonacci.next(); !it.done; it = fibonacci.next()) {}
+</code></pre>
+<p>This for loop is a perfectly reasonable way of going through every value of
+the generator. However, ES2015 introduces a much cleaner mechanism for
+looping through generators: the <code>for-of</code> loop.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">let</span> fibonacci = fibonacciGenerator(<span class="hljs-number">10</span>);
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> fibonacci) {
+  x; <span class="hljs-comment">// 1, 1, 2, 3, 5, ..., 55</span>
+}
+</code></pre>
+<h3 id="iterators-and-iterables">Iterators and Iterables</h3>
+<p>For/Of loops aren&#39;t just for generators. A generator is actually an instance
+of a more general ES2015 concept called an iterator. An <strong>iterator</strong> is
+any JavaScript object that has a <code>next()</code> function that returns
+<code>{ value: Any, done: Boolean }</code>. A generator is one example of an iterator.
+You can also iterate over arrays:</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> [<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>]) {
+  x; <span class="hljs-comment">// 1, 2, 3</span>
+}
+</code></pre>
+<p>However, For/Of loops don&#39;t operate on iterators, they operate on iterables.
+An <strong>iterable</strong> is an object that has a <code>Symbol.iterator</code> property which is
+a function that returns an iterator. In other words, when you execute a
+For/Of loop, the JavaScript interpreter looks for a <code>Symbol.iterator</code> property
+on the object you&#39;re looping <code>of</code>.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">let</span> iterable = {};
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> iterable) {} <span class="hljs-comment">// Throws an error</span>
+
+<span class="hljs-comment">// But once you add a Symbol.iterator property, everything works!</span>
+iterable[<span class="hljs-built_in">Symbol</span>.iterator] = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> fibonacciGenerator(<span class="hljs-number">10</span>);
+};
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> iterable) {
+  x; <span class="hljs-comment">// 1, 1, 2, 3, 5, ..., 55</span>
+}
+</code></pre>
+<h3 id="a-brief-overview-of-symbols">A Brief Overview of Symbols</h3>
+<p><strong>Symbols</strong> are another new feature in ES2015. Since this book is about
+generators, we won&#39;t explore symbols in depth, just enough to understand
+what the mysterious <code>iterable[Symbol.iterator]</code> code in the previous example
+is about.</p>
+<p><br><br><br></p>
+<p>You can think of a symbol as a unique identifier for a key on an object.
+For instance, suppose you wrote your own programming language and defined
+an iterable as an object that had a property named <code>iterator</code>. Now, every
+object that has a property named <code>iterator</code> would be an iterable, which
+could lead to some unpredictable behavior. For instance, suppose you added
+a property named <code>iterator</code> to an array - now you&#39;ve accidentally broken
+for/of loops for that array!</p>
+<p>Symbols protect you from the issue of accidental string collision. No string
+key is equal to <code>Symbol.iterator</code>, so you don&#39;t have to worry about
+accidentally breaking an iterable. Furthermore, symbols don&#39;t appear in
+the output of <code>Object.keys()</code>.</p>
+<pre><code class="lang-javascript"><span class="hljs-built_in">Symbol</span>.iterator; <span class="hljs-comment">// Symbol(Symbol.iterator)</span>
+
+<span class="hljs-keyword">let</span> iterable = {};
+iterable[<span class="hljs-built_in">Symbol</span>.iterator] = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> fibonacciGenerator(<span class="hljs-number">10</span>);
+};
+
+iterable.iterator; <span class="hljs-comment">// undefined</span>
+<span class="hljs-built_in">Object</span>.keys(iterable); <span class="hljs-comment">// Empty array!</span>
+</code></pre>
+<h3 id="iterables-and-generators">Iterables and Generators</h3>
+<p>The most important detail to note about generators and iterables is that
+<em>generator objects</em> are iterables, not <em>generator functions</em>. In order words,
+you can&#39;t run a for/of loop on a generator function.</p>
+<pre><code class="lang-javascript">fibonacciGenerator[<span class="hljs-built_in">Symbol</span>.iterable]; <span class="hljs-comment">// Undefined</span>
+fibonacciGenerator(<span class="hljs-number">10</span>)[<span class="hljs-built_in">Symbol</span>.iterable]; <span class="hljs-comment">// Function</span>
+
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> fibonacciGenerator) {} <span class="hljs-comment">// Error!</span>
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> fibonacciGenerator(<span class="hljs-number">10</span>)) {} <span class="hljs-comment">// Ok</span>
+</code></pre>
+<p>You may find it strange that the generator&#39;s
+<code>Symbol.iterator</code> function returns itself given that generator functions are
+not iterable. One reason for this decision is that a generator function can
+take parameters. For instance, looping over <code>fibonacciGenerator(10)</code> would not
+give the same results as looping over <code>fibonacciGenerator(11)</code>.</p>
+<p>The second most important detail to note about generators and iterables
+is that <code>generator[Symbol.iterator]</code> is a function that returns the
+generator itself. This means that you can&#39;t loop over the same generator
+twice. Once a generator is done, subsequent for/of loops will exit immediately.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> fibonacci = fibonacciGenerator(<span class="hljs-number">10</span>);
+fibonacci[<span class="hljs-built_in">Symbol</span>.iterator]() === fibonacci; <span class="hljs-comment">// true</span>
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> fibonacci) {
+  <span class="hljs-comment">// 1, 1, 2, 3, 5, ..., 55</span>
+}
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> fibonacci) {
+  <span class="hljs-comment">// Doesn't run!</span>
+}
+</code></pre>
 
     </div>
     <script type="text/javascript">
+      var start = 3400;
+      var delta = 1680;
       var pageHeights = [3400, 5080, 6760, 8440, 10120];
-      for (var i = 2; i < 7; ++i) {
-        document.write('<div class="page-num" style="top:' + pageHeights[i - 2] + 'px;">' + (i - 1) + '</div>');
+      for (var i = 2; i < 8; ++i) {
+        var height = start + (i - 2) * delta;
+        document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
     </script>
   

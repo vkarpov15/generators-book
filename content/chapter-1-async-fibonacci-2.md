@@ -7,9 +7,6 @@ example is done. This can get problematic if you want to compute the 100
 millionth Fibonacci number in an Express route handler. Without generators,
 breaking up a long-running calculation can be cumbersome.
 
-<div class="page-break"></div>
-<br><br>
-
 However, since you have a generator function that yields after each iteration
 of the for loop, you can call `generator.next()` in a `setInterval()`
 function. This will compute the next Fibonacci number with each iteration of

@@ -3,6 +3,9 @@ why generators are so useful. You can execute `generator.next()` synchronously
 or asynchronously without changing the implementation of the generator
 function.
 
+<div class="page-break"></div>
+<br><br>
+
 For instance, lets say you wrote a generator
 function that computes the Fibonacci Sequence. Note that generator functions
 can take parameters like any function.
