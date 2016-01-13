@@ -8,10 +8,10 @@
 4. Error Handling [7](#7)
 5. Case Study: Handling Async Errors [8](#8)
 
-### 2. Coroutines
+### 2. Asynchronous Coroutines [10](#10)
 
-1. How Does Co Work?
-2. Using Thunks
+1. Promises and Thunks [10](#10)
+2. Write Your Own Co [14](#14)
 3. Limitations
 4. The Real Implementation of Co
 5. Case Study: HTTP Requests with Co

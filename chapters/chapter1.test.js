@@ -352,8 +352,8 @@ describe('Chapter 1: Getting Started', function() {
       };
 
       const generator = generatorFunction();
-      const fn = generator.next();
-      fn(function(error, res) {
+      const res = generator.next();
+      res.value(function(error, res) {
         generator.next(res);
         // acquit:ignore:start
         done();
@@ -382,8 +382,8 @@ describe('Chapter 1: Getting Started', function() {
       };
 
       const generator = generatorFunction();
-      const fn = generator.next();
-      fn(function(error, res) {
+      const res = generator.next();
+      res.value(function(error, res) {
         generator.throw(error);
         // acquit:ignore:start
         done();

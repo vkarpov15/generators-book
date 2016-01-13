@@ -254,10 +254,10 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <li>Error Handling <a href="#7">7</a></li>
 <li>Case Study: Handling Async Errors <a href="#8">8</a></li>
 </ol>
-<h3 id="2-coroutines">2. Coroutines</h3>
+<h3 id="2-asynchronous-coroutines-10-10-">2. Asynchronous Coroutines <a href="#10">10</a></h3>
 <ol>
-<li>How Does Co Work?</li>
-<li>Using Thunks</li>
+<li>Promises and Thunks <a href="#10">10</a></li>
+<li>Write Your Own Co <a href="#14">14</a></li>
 <li>Limitations</li>
 <li>The Real Implementation of Co</li>
 <li>Case Study: HTTP Requests with Co</li>
@@ -650,8 +650,8 @@ asynchronous function without any errors.</p>
 };
 
 <span class="hljs-keyword">const</span> generator = generatorFunction();
-<span class="hljs-keyword">const</span> fn = generator.next();
-fn(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
+<span class="hljs-keyword">const</span> res = generator.next();
+res.value(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
   generator.next(res);
 });
 </code></pre>
@@ -672,9 +672,291 @@ coroutines chapter, this idea is the basis of the co library.</p>
 };
 
 <span class="hljs-keyword">const</span> generator = generatorFunction();
-<span class="hljs-keyword">const</span> fn = generator.next();
-fn(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
+<span class="hljs-keyword">const</span> res = generator.next();
+res.value(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
   generator.throw(error);
+});
+</code></pre>
+<h1 id="chapter-2-asynchronous-coroutines">Chapter 2: Asynchronous Coroutines</h1>
+<p>In chapter 1, you saw how to <code>yield</code> an asynchronous function from a generator.
+The calling function would then execute the asynchronous function and resume
+the generator function when the asynchronous function was done. This pattern
+is an instance of an old (1958) programming concept known as a coroutine.
+A <strong>coroutine</strong> is a function that can suspend its execution and defer to
+another function. As you might have guessed, generator functions are coroutines,
+and the <code>yield</code> statement is how a generator function defers control to another
+function. You can think of a coroutine as two functions running side-by-side,
+deferring control to each other at predefined points.</p>
+<p>So why are coroutines special? In JavaScript, you typically need to specify a
+callback for asynchronous operations. For instance, if you use the <code>superagent</code>
+HTTP library to make an HTTP request to Google&#39;s home page, you would use code
+similar to what you see below.</p>
+<pre><code class="lang-javascript">superagent.get(<span class="hljs-string">'http://google.com'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
+  <span class="hljs-comment">// Handle error, use res</span>
+});
+</code></pre>
+<p>By yielding asynchronous operations, you can write asynchronous operations
+without callbacks. However, remember that a coroutine involves two functions:
+the generator function, and the function that calls <code>next()</code> on the generator.
+When your generator function yields an asynchronous operation, the calling
+function needs to handle the asynchronous operation and resume the generator
+when the asynchronous operation completes.</p>
+<p>The most popular library for handling generator functions that yield
+asynchronous operations is called co. Here&#39;s what getting the HTML for Google&#39;s
+home page looks like in co. Looks cool, right? The below code is still
+asynchronous, but looks like synchronous code. In this chapter, you&#39;ll learn
+about how co works by writing your own co.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> html = (<span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>)).text;
+  <span class="hljs-comment">// HTML for Google's home page</span>
+  html;
+});
+</code></pre>
+<h2 id="promises-and-thunks">Promises and Thunks</h2>
+<p>The purpose of this chapter is to build your own co. But first, there&#39;s one
+key term that we need to clarify: what sort of asynchronous operations can
+you yield to co? The examples you&#39;ve seen so far</p>
+<p><br><br><br></p>
+<p>in this book have been
+cherry-picked. For instance, recall the asynchronous function from the
+asynchronous errors section.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> <span class="hljs-keyword">async</span> = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">callback</span>) </span>{
+  setTimeout(() =&gt; callback(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Oops!'</span>)), <span class="hljs-number">10</span>);
+};
+</code></pre>
+<p>The above function is asynchronous, but not representative of asynchronous
+functions as a whole. For instance, the <code>superagent.get</code> function takes
+a parameter as well as a callback:</p>
+<pre><code class="lang-javascript">superagent.get(<span class="hljs-string">'http://google.com'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{
+<span class="hljs-comment">// Handle error, use res</span>
+});
+</code></pre>
+<p>The <code>async</code> function is an example of a thunk. A <strong>thunk</strong> is an asynchronous
+function that takes a single parameter, a callback. The <code>superagent.get()</code>
+function is <em>not</em> a thunk, because it takes 2 parameters, a url and a callback.</p>
+<p>Thunks may seem limited, but with arrow functions you can easily convert
+any asynchronous function call to a thunk.</p>
+<pre><code class="lang-javascript">co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> (callback) =&gt; { superagent.get(<span class="hljs-string">'http://google.com'</span>, callback); };
+});
+</code></pre>
+<p>There are also libraries that can convert asynchronous functions to thunks
+for you. The original author of co, TJ Holowaychuk, also wrote a library called
+thunkify. As the name suggests, thunkify converts a general asynchronous
+function into a thunk for use with co. The <code>thunkify</code> function takes a
+single parameter, an asynchronous function, and returns a function that
+returns a thunk. Below is how you would use
+<code>thunkify()</code> with co.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+<span class="hljs-keyword">const</span> thunkify = <span class="hljs-built_in">require</span>(<span class="hljs-string">'thunkify'</span>);
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> thunk = thunkify(superagent.get)(<span class="hljs-string">'http://www.google.com'</span>);
+  <span class="hljs-comment">// function</span>
+  <span class="hljs-keyword">typeof</span> thunk;
+  <span class="hljs-comment">// A function's length property contains the number of parameters</span>
+  <span class="hljs-comment">// In this case, 1</span>
+  thunk.length;
+  <span class="hljs-keyword">const</span> html = <span class="hljs-keyword">yield</span> thunk;
+  <span class="hljs-comment">// HTML for Google's home page</span>
+  html;
+}).catch(error =&gt; done(error));
+</code></pre>
+<p><br><br></p>
+<p>Thunkify may seem confusing because of the numerous layers of function
+indirection. Don&#39;t worry, thunkify is not that complex, you can implement
+your own in 9 lines. Below is a simple implementation of thunkify.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+
+<span class="hljs-keyword">const</span> thunkify = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">fn</span>) </span>{
+  <span class="hljs-comment">// Thunkify returns a function that takes some arguments</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-comment">// The function gathers the arguments</span>
+    <span class="hljs-keyword">const</span> args = [];
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> arg <span class="hljs-keyword">of</span> <span class="hljs-built_in">arguments</span>) {
+      args.push(arg);
+    }
+    <span class="hljs-comment">// And returns a thunk</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">callback</span>) </span>{
+      <span class="hljs-comment">// The thunk calls the original function with your arguments</span>
+      <span class="hljs-comment">// plus the callback</span>
+      <span class="hljs-keyword">return</span> fn.apply(<span class="hljs-literal">null</span>, args.concat([callback]));
+    };
+  };
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> thunk = thunkify(superagent.get)(<span class="hljs-string">'http://www.google.com'</span>);
+  <span class="hljs-comment">// </span>
+  <span class="hljs-keyword">const</span> html = <span class="hljs-keyword">yield</span> thunk;
+  <span class="hljs-comment">// HTML for Google's home page</span>
+  html;
+});
+</code></pre>
+<p>If thunkify makes thunks so easy, why do you ever need anything else? As is
+often the case with JavaScript, the problem is the <code>this</code> keyword.
+The below example shows that when you call <code>thunkify()</code> on a function, that
+function loses its value of <code>this</code>.</p>
+<pre><code class="lang-javascript"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Test</span> </span>{
+  <span class="hljs-keyword">async</span>(callback) {
+    <span class="hljs-keyword">return</span> callback(<span class="hljs-literal">null</span>, <span class="hljs-keyword">this</span>);
+  }
+}
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> test = <span class="hljs-keyword">new</span> Test();
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> thunkify(test.async)();
+  <span class="hljs-comment">// Woops, res refers to global object rather than the `test` variable</span>
+  assert.ok(res !== test);
+  done();
+});
+</code></pre>
+<p><br><br><br><br></p>
+<p>Why does thunkify lose the function&#39;s value of <code>this</code>? Because the JavaScript
+language spec treats calling <code>a.b();</code> different from <code>var c = a.b; c();</code>.
+When you call a function as a member, like the <code>a.b();</code> case, <code>this</code> will equal
+<code>a</code> in the function call. However, <code>var c = a.b; c();</code> does not call a function
+as a member, so <code>this</code> refers to the global object in <code>c</code>. The latter case
+also applies when you pass a function as a parameter to another function,
+like you do with <code>thunkify()</code>.</p>
+<p>There are ways to make thunkify work better. For instance, in the previous
+example, you could use <code>.bind()</code>.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> thunkify(test.async.bind(test))();
+</code></pre>
+<p>However, <code>bind()</code> gets to be very confusing when you have <em>chained</em> function
+calls. A chained function call takes the form <code>a.b().c().d()</code>, and the <code>b()</code>,
+<code>c()</code>, and <code>d()</code> function calls are &quot;chained&quot; together. This API pattern
+is often used in JavaScript for building up complex objects, like HTTP requests
+or MongoDB queries. For instance, superagent has a chainable API for building
+up HTTP requests.</p>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Create an arbitrary complex HTTP request to show how superagent's</span>
+<span class="hljs-comment">// request builder works.</span>
+superagent.
+  get(<span class="hljs-string">'http://google.com'</span>).
+  <span class="hljs-comment">// Set the HTTP Authorization header</span>
+  set(<span class="hljs-string">'Authorization'</span>, <span class="hljs-string">'MY_TOKEN_HERE'</span>).
+  <span class="hljs-comment">// Only allow 5 HTTP redirects before failing</span>
+  redirects(<span class="hljs-number">5</span>).
+  <span class="hljs-comment">// Add `?color=blue` to the URL</span>
+  query({ color: blue }).
+  <span class="hljs-comment">// Send the request</span>
+  end(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error, res</span>) </span>{});
+</code></pre>
+<p>Let&#39;s say you wanted to thunkify the above code. Where would you need to use
+<code>.bind()</code> and what would you need to <code>bind()</code> to? The answer is not obvious
+unless you read superagent&#39;s code. You need to <code>bind()</code> to
+the return value of <code>superagent.get()</code>.</p>
+<pre><code class="lang-javascript">co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> req = superagent.get(<span class="hljs-string">'http://google.com'</span>);
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> thunkify(req.query({ color: blue }).end.bind(req));
+});
+</code></pre>
+<p>Thunkify and thunks in general are an excellent fallback, but co
+supports a better asynchronous primitive: promises. A <strong>promise</strong> is an
+object that has a <code>.then()</code> function that takes two functions as parameters.</p>
+<ul>
+<li><code>onFulfilled</code>: called if the asynchronous operation succeeds.</li>
+<li><code>onRejected</code>: called if the asynchronous operation failed.</li>
+</ul>
+<p>You can think of promises as an object wrapper around a single
+asynchronous operation. Once you call <code>.then()</code>, the asynchronous
+operation starts. Once the asynchronous operation completes,
+the promise then calls either <code>onFulfilled</code> or <code>onRejected</code>.</p>
+<p><br></p>
+<p>For example, each function call in the superagent
+HTTP request builder returns a promise that you can <code>yield</code>.</p>
+<pre><code class="lang-javascript">co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// `superagent.get()` returns a promise, because the `.then` property</span>
+  <span class="hljs-comment">// is a function.</span>
+  superagent.get(<span class="hljs-string">'http://www.google.com'</span>).then;
+  co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-comment">// Works because co is smart enough to look for a `.then()` function</span>
+    <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> superagent.
+      get(<span class="hljs-string">'http://www.google.com'</span>).
+      query({ color: <span class="hljs-string">'blue'</span> });
+  });
+});
+</code></pre>
+<p>Much easier than using thunkify! More importantly, you don&#39;t have to worry
+about messing up the value of <code>this</code> because you aren&#39;t passing a function as
+a parameter. The downside of promises, though, is that you rely on the function
+itself to return a promise. When you use thunkify, you make no assumptions
+about the return value of the function you&#39;re calling. However, many popular
+Node.js libraries, like superagent, the redis driver, and the MongoDB driver,
+all have mechanisms for promise-based APIs.</p>
+<p>Promises are a deep subject and what you&#39;ve seen thus far is just the tip of
+the iceberg. To use co, all you need to know is that
+a promise is an object with a <code>.then()</code> function that takes 2 function
+parameters: <code>onFulfilled</code> and <code>onRejected</code>. For instance, below is an example
+of a minimal promise that&#39;s compatible with co.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> promise = {
+  then: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">onFulfilled, onRejected</span>) </span>{
+    setTimeout(() =&gt; onFulfilled(<span class="hljs-string">'Hello, World!'</span>), <span class="hljs-number">0</span>);
+  }
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> str = <span class="hljs-keyword">yield</span> promise;
+  assert.equal(str, <span class="hljs-string">'Hello, World!'</span>);
+});
+</code></pre>
+<h2 id="write-your-own-co">Write Your Own Co</h2>
+<p>Now that you&#39;ve seen how thunks and promises work, it&#39;s time to apply the
+fundamentals of generators to write your own minimal implementation of co.
+To avoid confusion, your version will be called &quot;fo&quot; (pronounced like &quot;faux&quot;).</p>
+<p>The v1 implementation of fo is short, but will utilize all the concepts that
+you&#39;ve learned thus far. You&#39;ll use generator functions, <code>generator.next()</code>,
+<code>generator.throw()</code>, thunks, and promises. Ready? The
+implementation is...</p>
+<p><br></p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> fo = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">generatorFunction</span>) </span>{
+  <span class="hljs-keyword">const</span> generator = generatorFunction();
+  next();
+
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">next</span>(<span class="hljs-params">v</span>) </span>{
+    <span class="hljs-keyword">const</span> res = generator.next(v);
+    <span class="hljs-keyword">if</span> (res.done) {
+      <span class="hljs-keyword">return</span>;
+    }
+    handleAsync(res.value);
+  }
+
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handleAsync</span>(<span class="hljs-params">async</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">async</span> &amp;&amp; <span class="hljs-keyword">async</span>.then) {
+      handlePromise(<span class="hljs-keyword">async</span>);
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> <span class="hljs-keyword">async</span> === <span class="hljs-string">'function'</span>) {
+      handleThunk(<span class="hljs-keyword">async</span>);
+    } <span class="hljs-keyword">else</span> {
+      generator.throw(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Invalid yield <span class="hljs-subst">${async}</span>`</span>))
+    }
+  }
+
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handlePromise</span>(<span class="hljs-params">async</span>) </span>{
+    <span class="hljs-keyword">const</span> onRejected = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error</span>) </span>{
+      generator.throw(error);
+    }
+    <span class="hljs-keyword">async</span>.then(next, onRejected);
+  }
+
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handleThunk</span>(<span class="hljs-params">async</span>) </span>{
+    <span class="hljs-keyword">async</span>((error, v) =&gt; {
+      <span class="hljs-keyword">if</span> (error) {
+        generator.throw(error);
+        <span class="hljs-keyword">return</span>;
+      }
+      next(v);
+    });
+  }
+};
+
+<span class="hljs-comment">// fo in action</span>
+fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> html = (<span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>)).text;
 });
 </code></pre>
 
@@ -682,8 +964,7 @@ fn(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span 
     <script type="text/javascript">
       var start = 3400;
       var delta = 1680;
-      var pageHeights = [3400, 5080, 6760, 8440, 10120];
-      for (var i = 2; i < 10; ++i) {
+      for (var i = 2; i < 16; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
