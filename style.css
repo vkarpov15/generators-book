@@ -12,6 +12,10 @@ h2 {
   padding-top: 75px;
 }
 
+h2#write-your-own-co, h2#real-implementation-of-co {
+  page-break-before: always;
+}
+
 .page-break {
   page-break-before: always;
 }
@@ -30,7 +34,7 @@ code {
   font-family: 'Droid Sans Mono';
 }
 
-p {
+p, li {
   line-height: 1.5em;
 }
 

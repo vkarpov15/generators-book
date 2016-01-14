@@ -86,7 +86,33 @@ a parameter. The downside of promises, though, is that you rely on the function
 itself to return a promise. When you use thunkify, you make no assumptions
 about the return value of the function you're calling. However, many popular
 Node.js libraries, like superagent, the redis driver, and the MongoDB driver,
-all have mechanisms for promise-based APIs.
+all have the ability to return promises for asynchronous operations.
+
+Creating your own promises is easy. Promises are a core part of ES2015, so
+you don't have to include any libraries. Below is an example of how to create
+an ES2015 promise. The `Promise` constructor takes a single function,
+called a **resolver**, which takes two function parameters, `resolve` and
+`reject`. The resolver is responsible for executing the asynchronous
+operation and calling `resolve()` if the operation succeeded or `reject()`
+if it failed.
+
+```javascript
+// The resolver function takes 2 parameters, a `resolve()` function
+// and a `reject()` function.
+const resolver = function(resolve, reject) {
+  // Call `resolve()` asynchronously with a value
+  setTimeout(() => resolve('Hello, World!'), 5);
+};
+const promise = new Promise(resolver);
+promise.then(function(res) {
+  // The promise's `onFulfilled` function gets called with
+  // the value the resolver passed to `resolve()`. In this
+  // case, the string 'Hello, World!'
+  res;
+});
+```
+
+<br><br><br><br><br>
 
 Promises are a deep subject and what you've seen thus far is just the tip of
 the iceberg. To use co, all you need to know is that

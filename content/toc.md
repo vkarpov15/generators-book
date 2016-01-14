@@ -11,10 +11,9 @@
 ### 2. Asynchronous Coroutines [10](#10)
 
 1. Promises and Thunks [10](#10)
-2. Write Your Own Co [14](#14)
-3. Limitations [17](#17)
-4. Real Implementation of Co
-5. Case Study: HTTP Requests with Co
+2. Write Your Own Co [16](#16)
+3. Limitations [18](#18)
+4. Real Implementation of Co [20](#20)
 
 ### 3. Koa and Middleware
 
