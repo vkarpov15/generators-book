@@ -258,8 +258,8 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <ol>
 <li>Promises and Thunks <a href="#10">10</a></li>
 <li>Write Your Own Co <a href="#14">14</a></li>
-<li>Limitations</li>
-<li>The Real Implementation of Co</li>
+<li>Limitations <a href="#17">17</a></li>
+<li>Real Implementation of Co</li>
 <li>Case Study: HTTP Requests with Co</li>
 </ol>
 <h3 id="3-koa-and-middleware">3. Koa and Middleware</h3>
@@ -863,11 +863,11 @@ object that has a <code>.then()</code> function that takes two functions as para
 <li><code>onFulfilled</code>: called if the asynchronous operation succeeds.</li>
 <li><code>onRejected</code>: called if the asynchronous operation failed.</li>
 </ul>
+<p><br><br><br><br></p>
 <p>You can think of promises as an object wrapper around a single
 asynchronous operation. Once you call <code>.then()</code>, the asynchronous
 operation starts. Once the asynchronous operation completes,
 the promise then calls either <code>onFulfilled</code> or <code>onRejected</code>.</p>
-<p><br></p>
 <p>For example, each function call in the superagent
 HTTP request builder returns a promise that you can <code>yield</code>.</p>
 <pre><code class="lang-javascript">co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
@@ -909,44 +909,48 @@ co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span
 <p>Now that you&#39;ve seen how thunks and promises work, it&#39;s time to apply the
 fundamentals of generators to write your own minimal implementation of co.
 To avoid confusion, your version will be called &quot;fo&quot; (pronounced like &quot;faux&quot;).</p>
+<p><br></p>
 <p>The v1 implementation of fo is short, but will utilize all the concepts that
 you&#39;ve learned thus far. You&#39;ll use generator functions, <code>generator.next()</code>,
 <code>generator.throw()</code>, thunks, and promises. Ready? The
 implementation is...</p>
-<p><br></p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> fo = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">generatorFunction</span>) </span>{
   <span class="hljs-keyword">const</span> generator = generatorFunction();
   next();
 
-  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">next</span>(<span class="hljs-params">v</span>) </span>{
-    <span class="hljs-keyword">const</span> res = generator.next(v);
+  <span class="hljs-comment">// Call next() or throw() on the generator as necessary</span>
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">next</span>(<span class="hljs-params">v, isError</span>) </span>{
+    <span class="hljs-keyword">const</span> res = isError ? generator.throw(v) : generator.next(v);
     <span class="hljs-keyword">if</span> (res.done) {
       <span class="hljs-keyword">return</span>;
     }
     handleAsync(res.value);
   }
 
+  <span class="hljs-comment">// Handle the result the generator yielded</span>
   <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handleAsync</span>(<span class="hljs-params">async</span>) </span>{
     <span class="hljs-keyword">if</span> (<span class="hljs-keyword">async</span> &amp;&amp; <span class="hljs-keyword">async</span>.then) {
       handlePromise(<span class="hljs-keyword">async</span>);
     } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> <span class="hljs-keyword">async</span> === <span class="hljs-string">'function'</span>) {
       handleThunk(<span class="hljs-keyword">async</span>);
     } <span class="hljs-keyword">else</span> {
-      generator.throw(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Invalid yield <span class="hljs-subst">${async}</span>`</span>))
+      next(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Invalid yield <span class="hljs-subst">${async}</span>`</span>), <span class="hljs-literal">true</span>);
     }
   }
 
+  <span class="hljs-comment">// If the generator yielded a promise, call `.then()`</span>
   <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handlePromise</span>(<span class="hljs-params">async</span>) </span>{
     <span class="hljs-keyword">const</span> onRejected = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">error</span>) </span>{
-      generator.throw(error);
-    }
+      next(error, <span class="hljs-literal">true</span>);
+    };
     <span class="hljs-keyword">async</span>.then(next, onRejected);
   }
 
+  <span class="hljs-comment">// If the generator yielded a thunk, call it</span>
   <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">handleThunk</span>(<span class="hljs-params">async</span>) </span>{
     <span class="hljs-keyword">async</span>((error, v) =&gt; {
       <span class="hljs-keyword">if</span> (error) {
-        generator.throw(error);
+        next(error, <span class="hljs-literal">true</span>);
         <span class="hljs-keyword">return</span>;
       }
       next(v);
@@ -959,12 +963,112 @@ fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span
   <span class="hljs-keyword">const</span> html = (<span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>)).text;
 });
 </code></pre>
+<p><br><br><br></p>
+<p>Let&#39;s take a closer look at how the <code>fo()</code> function works. The first step is
+to create a generator from the provided generator function. Once you have
+a generator, you need to use the <code>next()</code> function to kick off the generator&#39;s
+execution. The <code>next()</code> function calls <code>generator.next()</code> to start off the
+generator. Any time the generator yields, the <code>fo()</code> function calls
+<code>handleAsync()</code>, which is responsible for handling the asynchronous operations
+the generator yields. In particular, <code>handlePromise()</code> handles any promises
+that the generator yields, and <code>handleThunk()</code> handles any thunks.</p>
+<p>Let&#39;s see how <code>fo()</code> works with a simple error. In the below example, you make
+an HTTP request to a nonexistent URL. Superagent will fail, and so the
+promise calls its <code>onRejected()</code> function. The <code>fo()</code> function will then call
+<code>next()</code> with <code>isError</code> set to true. The internal <code>next()</code> function then
+calls <code>generator.throw()</code> to trigger an error in the generator, which you
+can then try/catch.</p>
+<pre><code class="lang-javascript">fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-comment">// First iteration of `next()` stops here,</span>
+    <span class="hljs-comment">// calls `.then()` on the promise</span>
+    <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://doesnot.exist.baddomain'</span>);
+  } <span class="hljs-keyword">catch</span> (error) {
+    <span class="hljs-comment">// The promise was rejected, so fo calls `generator.throw()` and</span>
+    <span class="hljs-comment">// you end up here.</span>
+  }
+
+  <span class="hljs-comment">// Second iteration of `next()` stops here, `.then()` on the promise</span>
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+  res.text;
+  <span class="hljs-comment">// Third iteration of `next()` stops here because generator is done</span>
+});
+</code></pre>
+<p>One neat pattern that illustrates the power of asynchronous coroutines is
+retrying failed HTTP requests. If the server you&#39;re trying to reach is
+unreliable, you may want to retry requests a fixed number of times before
+giving up. Without generators, retrying requests involves a lot of recursion
+and careful design decisions.
+With generators and <code>fo()</code> (or co), all you need to retry requests
+is a for loop as shown below.</p>
+<pre><code class="lang-javascript">fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> url = <span class="hljs-string">'http://doesnot.exist.baddomain'</span>;
+  <span class="hljs-keyword">const</span> NUM_RETRIES = <span class="hljs-number">3</span>;
+  <span class="hljs-keyword">let</span> res;
+  <span class="hljs-keyword">let</span> i;
+  <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">3</span>; ++i) {
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-comment">// Going to yield 3 times, and `fo()` will call `generator.throw()`</span>
+      <span class="hljs-comment">// 3 times because superagent will fail every time</span>
+      res = <span class="hljs-keyword">yield</span> superagent.get(url);
+    } <span class="hljs-keyword">catch</span> (error) { <span class="hljs-comment">/* retry */</span> }
+  }
+
+  <span class="hljs-comment">// res is undefined - retried 3 times with no results</span>
+});
+</code></pre>
+<h2 id="limitations">Limitations</h2>
+<p>The v1 implementation of fo is simple, clean, and gets you 80% of the way
+to writing your own co. However, co has several subtle features that become
+indispensable when you try to write a real application.</p>
+<p>One particular edge case that we glossed over in the &quot;Write Your Own Co&quot;
+section is what happens when there&#39;s an uncaught error in the generator.
+In the v1 implementation of fo, the uncaught error will crash the process.
+Crashing the process isn&#39;t the worst possible behavior, but, as you&#39;ll see in
+the &quot;Real Implementation of Co&quot; section, co provides a neat way to catch
+any uncaught errors in the generator function.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">try</span> {
+  fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-comment">// This will throw an uncaught asynchronous exception</span>
+    <span class="hljs-comment">// and crash the process!</span>
+    <span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://doesnot.exist.baddomain'</span>);
+  });
+} <span class="hljs-keyword">catch</span> (error) {
+  <span class="hljs-comment">// This try/catch won't catch the error within the `fo()` call!</span>
+}
+</code></pre>
+<p>Another limitation is the ability to use helper functions that yield. For
+instance, suppose you wanted to write a <code>retry()</code> helper function that
+retried an asynchronous operation a fixed number of times for you.
+You might try implementing retry as a plain old function
+(as opposed to a generator function) and then quickly realize that you can&#39;t
+yield from a normal function. You might then try implementing
+the <code>retry()</code> function as shown below. But alas! Your <code>fo()</code> v1 doesn&#39;t
+supporting yielding generators! </p>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Needs to be a generator function so you can `yield` in it.</span>
+<span class="hljs-keyword">const</span> retry = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">fn, numRetries</span>) </span>{
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; numRetries; ++i) {
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> fn();
+      <span class="hljs-keyword">return</span> res;
+    } <span class="hljs-keyword">catch</span> (error) {}
+  }
+  <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Retried <span class="hljs-subst">${numRetries}</span> times`</span>);
+};
+
+fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> url = <span class="hljs-string">'http://www.google.com'</span>;
+  <span class="hljs-comment">// Fo's `handleAsync` function will throw because you're</span>
+  <span class="hljs-comment">// yielding a generator function!</span>
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> retry(() =&gt; superagent.get(url), <span class="hljs-number">3</span>);
+});
+</code></pre>
 
     </div>
     <script type="text/javascript">
-      var start = 3400;
+      var start = 3410;
       var delta = 1680;
-      for (var i = 2; i < 16; ++i) {
+      for (var i = 2; i < 19; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

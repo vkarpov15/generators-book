@@ -56,12 +56,12 @@ object that has a `.then()` function that takes two functions as parameters.
 * `onFulfilled`: called if the asynchronous operation succeeds.
 * `onRejected`: called if the asynchronous operation failed.
 
+<br><br><br><br>
+
 You can think of promises as an object wrapper around a single
 asynchronous operation. Once you call `.then()`, the asynchronous
 operation starts. Once the asynchronous operation completes,
 the promise then calls either `onFulfilled` or `onRejected`.
-
-<br>
 
 For example, each function call in the superagent
 HTTP request builder returns a promise that you can `yield`.
