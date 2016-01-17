@@ -15,9 +15,9 @@
 3. Limitations [18](#18)
 4. Real Implementation of Co [20](#20)
 
-### 3. Koa and Middleware
+### 3. Koa and Middleware [25](#25)
 
-1. The Composition Module
+1. The koa-compose Module
 2. Writing Your Own Generator-Based Middleware
 3. Introducing Koa
 4. Case Study: Koa Error Handling Middleware

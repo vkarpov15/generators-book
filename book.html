@@ -265,9 +265,9 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <li>Limitations <a href="#18">18</a></li>
 <li>Real Implementation of Co <a href="#20">20</a></li>
 </ol>
-<h3 id="3-koa-and-middleware">3. Koa and Middleware</h3>
+<h3 id="3-koa-and-middleware-25-25-">3. Koa and Middleware <a href="#25">25</a></h3>
 <ol>
-<li>The Composition Module</li>
+<li>The koa-compose Module</li>
 <li>Writing Your Own Generator-Based Middleware</li>
 <li>Introducing Koa</li>
 <li>Case Study: Koa Error Handling Middleware</li>
@@ -1306,12 +1306,43 @@ co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span
   <span class="hljs-keyword">yield</span> persistToDb(res.text);
 }).catch(handleError);
 </code></pre>
+<h1 id="chapter-3-koa-and-middleware">Chapter 3: Koa and Middleware</h1>
+<p>Co and the notion of asynchronous coroutines enable you to write asynchronous
+code with cleaner syntax. However, co is useful for more than just writing
+HTTP requests without callbacks. As you saw in the &quot;Real Implementation of Co&quot;
+section, co supports generators as an asynchronous primitive. You used this
+idea to write helper functions that were also generators. The idea of yielding
+generators is useful for composing asynchronous functions, which leads to the
+idea of middleware.</p>
+<p>The concept of <strong>middleware</strong> in JavaScript is a sequence of functions where
+one function is responsible.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
+
+<span class="hljs-keyword">const</span> middleware1 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">const</span> start = <span class="hljs-built_in">Date</span>.now();
+  <span class="hljs-keyword">yield</span> next;
+  <span class="hljs-comment">// Approximately 100</span>
+  <span class="hljs-keyword">const</span> end = <span class="hljs-built_in">Date</span>.now() - start;
+};
+
+<span class="hljs-keyword">const</span> middleware2 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-comment">// Yield a thunk that gets resolved after 100 ms</span>
+  <span class="hljs-keyword">yield</span> callback =&gt; setTimeout(() =&gt; callback(), <span class="hljs-number">100</span>);
+  <span class="hljs-keyword">yield</span> next;
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> compose([middleware1, middleware2])();
+});
+</code></pre>
+<h2 id="the-koa-compose-module">The koa-compose Module</h2>
 
     </div>
     <script type="text/javascript">
       var start = 3410;
       var delta = 1680;
-      for (var i = 2; i < 26; ++i) {
+      for (var i = 2; i < 27; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
