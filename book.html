@@ -1315,7 +1315,39 @@ idea to write helper functions that were also generators. The idea of yielding
 generators is useful for composing asynchronous functions, which leads to the
 idea of middleware.</p>
 <p>The concept of <strong>middleware</strong> in JavaScript is a sequence of functions where
-one function is responsible.</p>
+one function is responsible for calling the next function in the sequence.
+If you&#39;ve used the Express web framework, you may have seen Express-style
+middleware.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> app = <span class="hljs-built_in">require</span>(<span class="hljs-string">'express'</span>);
+
+<span class="hljs-keyword">const</span> middlewareFn = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">req, res, next</span>) </span>{
+  <span class="hljs-comment">// A middleware function takes in the request and response,</span>
+  <span class="hljs-comment">// transforms them, and calls `next()` to trigger the next</span>
+  <span class="hljs-comment">// function in the middleware chain.</span>
+  next();
+};
+
+app.use(middlewareFn);
+</code></pre>
+<p>Express relies heavily on middleware. Even routing is implemented as middleware
+in Express. However, this middleware paradigm has numerous limitations. The
+most significant limitation is the fact that a middleware function has no way
+of knowing when rest of the middleware chain is complete. For instance, suppose
+you wanted to compute how long a request took in Express.</p>
+<pre><code class="lang-javascript">app.use((req, res, next) =&gt; {
+  <span class="hljs-comment">// next() is async and does not return a promise, nor does it</span>
+  <span class="hljs-comment">// take a callback.</span>
+  next();
+});
+</code></pre>
+<p>The <code>next()</code> call fires off the next middleware in the chain, but there is no
+way for the middleware function above to know when <code>next()</code> is done.
+However, suppose your middleware functions were generator functions rather
+than regular functions, and suppose <code>next()</code> returned a promise. If you
+wrapped the middleware generator functions in a <code>co()</code> call, you would now
+have the ability to compose asynchronous coroutines: the first coroutine calls
+the second and so on, and then the first coroutine picks up where it left off
+after the second is done. This is what the koa-compose module does.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
 <span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
 
