@@ -63,7 +63,7 @@ co(function*() {
     <script type="text/javascript">
       var start = 3410;
       var delta = 1680;
-      for (var i = 2; i < 28; ++i) {
+      for (var i = 2; i < 29; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

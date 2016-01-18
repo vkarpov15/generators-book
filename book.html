@@ -267,9 +267,9 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 </ol>
 <h3 id="3-koa-and-middleware-25-25-">3. Koa and Middleware <a href="#25">25</a></h3>
 <ol>
-<li>The koa-compose Module</li>
-<li>Writing Your Own Generator-Based Middleware</li>
+<li>The koa-compose Module <a href="#26">26</a></li>
 <li>Introducing Koa</li>
+<li>Limitations of koa-compose</li>
 <li>Case Study: Koa Error Handling Middleware</li>
 </ol>
 <h3 id="4-transpiling">4. Transpiling</h3>
@@ -1316,29 +1316,25 @@ generators is useful for composing asynchronous functions, which leads to the
 idea of middleware.</p>
 <p>The concept of <strong>middleware</strong> in JavaScript is a sequence of functions where
 one function is responsible for calling the next function in the sequence.
-If you&#39;ve used the Express web framework, you may have seen Express-style
-middleware.</p>
-<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> app = <span class="hljs-built_in">require</span>(<span class="hljs-string">'express'</span>);
-
-<span class="hljs-keyword">const</span> middlewareFn = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">req, res, next</span>) </span>{
+Conventional ES5-style middleware has the below form.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> middlewareFn = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">req, res, next</span>) </span>{
   <span class="hljs-comment">// A middleware function takes in the request and response,</span>
   <span class="hljs-comment">// transforms them, and calls `next()` to trigger the next</span>
   <span class="hljs-comment">// function in the middleware chain.</span>
   next();
 };
-
-app.use(middlewareFn);
 </code></pre>
-<p>Express relies heavily on middleware. Even routing is implemented as middleware
-in Express. However, this middleware paradigm has numerous limitations. The
-most significant limitation is the fact that a middleware function has no way
-of knowing when rest of the middleware chain is complete. For instance, suppose
-you wanted to compute how long a request took in Express.</p>
-<pre><code class="lang-javascript">app.use((req, res, next) =&gt; {
+<p>However, this function composition paradigm has numerous limitations. Once a
+middleware function calls <code>next()</code>, it defers control to the next function
+in the sequence. There is no way for the next function to return any values
+or defer control back to the previous middleware. In other words, what if
+you wanted to write a middleware function that reported how long the
+rest of the sequence of functions took to complete?</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> middlewareFn = (req, res, next) =&gt; {
   <span class="hljs-comment">// next() is async and does not return a promise, nor does it</span>
   <span class="hljs-comment">// take a callback.</span>
   next();
-});
+};
 </code></pre>
 <p>The <code>next()</code> call fires off the next middleware in the chain, but there is no
 way for the middleware function above to know when <code>next()</code> is done.
@@ -1347,7 +1343,13 @@ than regular functions, and suppose <code>next()</code> returned a promise. If y
 wrapped the middleware generator functions in a <code>co()</code> call, you would now
 have the ability to compose asynchronous coroutines: the first coroutine calls
 the second and so on, and then the first coroutine picks up where it left off
-after the second is done. This is what the koa-compose module does.</p>
+after the second is done.</p>
+<p><br><br><br><br><br><br><br><br><br></p>
+<p>The generator-based function composition library koa-compose does exactly
+this. The <code>next</code> parameter is a generator function that triggers the next
+generator in the sequence. In the below example, <code>middleware1</code> yields
+next to defer control to <code>middleware2</code>, which takes approximately 100ms
+to run, and picks up where it left off after <code>middleware2</code> is done.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
 <span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
 
@@ -1369,12 +1371,87 @@ co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span
 });
 </code></pre>
 <h2 id="the-koa-compose-module">The koa-compose Module</h2>
+<p>The koa-compose module that you saw in this chapter&#39;s introduction is trivial
+to implement. The key idea is that the <code>next</code> generator function that each
+middleware gets is a generator which, when completed, means that each
+subsequent middleware has completed. In other words, the <code>next</code> parameter
+to each generator function needs to be a generator derived from the next
+generator function in the sequence as shown below.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> compose = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">middleware</span>) </span>{
+  <span class="hljs-keyword">const</span> noop = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{};
+  <span class="hljs-comment">// compose returns a generator</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">let</span> i = middleware.length;
+    <span class="hljs-keyword">let</span> next = noop;
+    <span class="hljs-keyword">while</span> (i--) {
+      <span class="hljs-comment">// Loop over generators from last to first. The `next` passed</span>
+      <span class="hljs-comment">// to the i-th generator function is the (i+1)-th generator.</span>
+      next = middleware[i](next);
+    }
+    <span class="hljs-keyword">yield</span> next;
+  };
+};
+</code></pre>
+<p><br><br></p>
+<p>The real implementation of koa-compose is almost identical to the above
+implementation, just with better support for the <code>this</code> keyword. The <code>this</code>
+keyword will be important in the koa section. But, before you learn about koa,
+let&#39;s take a look at how error handling works in koa-compose.</p>
+<p>Remember that koa-compose doesn&#39;t add any special error handling on top of
+co and generators. If the first middleware in the chain throws an error,
+the subsequent middleware functions never execute, and the <code>yield</code> statement
+that calls the composed function will throw an error.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
+
+<span class="hljs-keyword">const</span> middleware1 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'oops'</span>);
+};
+
+<span class="hljs-keyword">const</span> middleware2 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-comment">// never get here</span>
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// This will throw an error</span>
+  <span class="hljs-keyword">yield</span> compose([middleware1, middleware2])();
+}).catch(error =&gt; {
+  <span class="hljs-comment">// Error: oops</span>
+});
+</code></pre>
+<p>One neat feature of this middleware paradigm is that you can define error
+handling middleware using try/catch. Since the way you defer control to the
+next generator function in the sequence is by yielding on a generator,
+surrounding the <code>yield next</code> call in a try/catch will catch <strong>any</strong> errors
+that the subsequent functions in the sequence throw.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">let</span> error;
+<span class="hljs-keyword">const</span> middleware1 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-comment">// The `middleware2` generator function throws...</span>
+    <span class="hljs-keyword">yield</span> next;
+  } <span class="hljs-keyword">catch</span> (err) {
+    <span class="hljs-comment">// which triggers this try/catch and records the error</span>
+    error = err;
+  }
+};
+
+<span class="hljs-keyword">const</span> middleware2 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Will get caught'</span>);
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// `res` will be -1 since the final value returned by middleware1</span>
+  <span class="hljs-comment">// is -1</span>
+  <span class="hljs-keyword">yield</span> compose([middleware1, middleware2])();
+  <span class="hljs-comment">// error is now 'Error: Will get caught'</span>
+});
+</code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3410;
       var delta = 1680;
-      for (var i = 2; i < 27; ++i) {
+      for (var i = 2; i < 29; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
