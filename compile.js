@@ -26,6 +26,7 @@ marked.setOptions({
 co(function*() {
   const cover = yield thunkify(fs.readFile)('./content/cover.html');
   const toc = yield thunkify(fs.readFile)('./content/toc.md');
+  const intro = yield thunkify(fs.readFile)('./content/intro.md');
   const chapter1 = yield thunkify(fs.readFile)('./chapters/chapter1.test.js');
   const chapter2 = yield thunkify(fs.readFile)('./chapters/chapter2.test.js');
   const chapter3 = yield thunkify(fs.readFile)('./chapters/chapter3.test.js');
@@ -58,12 +59,13 @@ co(function*() {
     <div id="content">
       ${cover.toString()}
       ${marked(toc.toString())}
+      ${marked(intro.toString())}
       ${marked(markdown)}
     </div>
     <script type="text/javascript">
       var start = 3410;
       var delta = 1680;
-      for (var i = 2; i < 31; ++i) {
+      for (var i = 2; i < 34; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

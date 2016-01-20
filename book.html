@@ -250,26 +250,27 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 </div>
 
       <h1 id="table-of-contents">Table of Contents</h1>
-<h3 id="1-getting-started-with-generators-1-1-">1. Getting Started With Generators <a href="#1">1</a></h3>
+<h3 id="how-to-use-this-book-1-1-">How To Use This Book <a href="#1">1</a></h3>
+<h3 id="1-getting-started-with-generators-2-2-">1. Getting Started With Generators <a href="#2">2</a></h3>
 <ol>
-<li>What is a Generator? <a href="#1">1</a></li>
-<li>Case Study: Async Fibonacci <a href="#3">3</a></li>
-<li>For/Of Loops <a href="#5">5</a></li>
-<li>Error Handling <a href="#7">7</a></li>
-<li>Case Study: Handling Async Errors <a href="#8">8</a></li>
+<li>What is a Generator? <a href="#2">2</a></li>
+<li>Case Study: Async Fibonacci <a href="#4">4</a></li>
+<li>For/Of Loops <a href="#6">6</a></li>
+<li>Error Handling <a href="#8">8</a></li>
+<li>Case Study: Handling Async Errors <a href="#9">9</a></li>
 </ol>
-<h3 id="2-asynchronous-coroutines-10-10-">2. Asynchronous Coroutines <a href="#10">10</a></h3>
+<h3 id="2-asynchronous-coroutines-11-11-">2. Asynchronous Coroutines <a href="#11">11</a></h3>
 <ol>
-<li>Promises and Thunks <a href="#10">10</a></li>
-<li>Write Your Own Co <a href="#16">16</a></li>
-<li>Limitations <a href="#18">18</a></li>
-<li>Real Implementation of Co <a href="#20">20</a></li>
+<li>Promises and Thunks <a href="#11">11</a></li>
+<li>Write Your Own Co <a href="#17">17</a></li>
+<li>Limitations <a href="#19">19</a></li>
+<li>Real Implementation of Co <a href="#21">21</a></li>
 </ol>
-<h3 id="3-koa-and-middleware-25-25-">3. Koa and Middleware <a href="#25">25</a></h3>
+<h3 id="3-koa-and-middleware-26-26-">3. Koa and Middleware <a href="#26">26</a></h3>
 <ol>
-<li>The koa-compose Module <a href="#26">26</a></li>
-<li>The Koa Web Framework <a href="#28">28</a></li>
-<li>Limitations of koa-compose</li>
+<li>The koa-compose Module <a href="#27">27</a></li>
+<li>The Koa Web Framework <a href="#29">29</a></li>
+<li>Limitations of koa-compose <a href="#32">32</a></li>
 </ol>
 <h3 id="4-transpiling">4. Transpiling</h3>
 <ol>
@@ -278,6 +279,42 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <li>Write Your Own Transpiler</li>
 </ol>
 <h3 id="5-moving-on">5. Moving On</h3>
+
+      <h1 id="how-to-use-this-book">How To Use This Book</h1>
+<p>This is not just another tech book that sits up on your bookshelf gathering
+dust. I think of this ebook as something halfway between a blog post and
+a full book: focused and concise like a blog post, in-depth and rigorous like
+a pure math textbook. The purpose of this ebook is to take you from a generators
+novice to someone who would be comfortable discussing co internals in 1 to 2
+hours. This ebook is meant to be read in 1-2 sessions (its only 40 pages!),
+although you may also choose to read one chapter at a time.</p>
+<p>What is this ebook focused on?</p>
+<ul>
+<li>80/20 principle. There&#39;s a lot of tooling related to generators out there:
+transpilers, modules, build systems, etc. This book is focused solely on
+generators and other features defined in the ES2015 specification. The <strong>only</strong>
+dependency is Node.js &gt;= 4.0.0 and npm.
+In particular, this ebook will <strong>not</strong> use webpack, react, babel, gulp, grunt,
+TypeScript, CoffeeScript, AngularJS, Dart, or any other framework,
+preprocessor, or hype train.</li>
+<li>The co module and asynchronous coroutines. To better understand how generators
+work in an asynchronous language like JavaScript, you&#39;ll write your own
+minimal version of co from scratch. Your co implementation will enable you
+to write asynchronous code without callbacks. For instance,</li>
+</ul>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// Make an HTTP request to google's home page</span>
+  <span class="hljs-keyword">const</span> google = (<span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://google.com'</span>)).text;
+  <span class="hljs-keyword">const</span> regexp = <span class="hljs-regexp">/google/i</span>;
+  <span class="hljs-comment">// The number of times "Google" appears on google.com</span>
+  regexp.match(google).length;
+});
+</code></pre>
+<ul>
+<li>Composing asynchronous coroutines. You&#39;ll learn about the generator-based
+server-side web framework koa, and write your own minimal koa implementation.</li>
+</ul>
 
       <h1 id="chapter-1-getting-started">Chapter 1: Getting Started</h1>
 <p>Generators are a powerful new feature in ES2015. Generators are far from a
@@ -1500,7 +1537,7 @@ that takes in a request and a response, and you&#39;re responsible for figuring
 out what that function should be. Koa enables you to use koa-compose to compose
 generator functions into a route handler that&#39;s compatible with Node.js&#39; HTTP
 server package. With that in mind, below is a minimal implementation of koa
-that is sufficient to run your basic &#39;Hello, World&#39; example.</p>
+that is sufficient to run your basic &quot;Hello, World&quot; example.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> http = <span class="hljs-built_in">require</span>(<span class="hljs-string">'http'</span>);
 <span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
 <span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
@@ -1547,12 +1584,68 @@ app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(
 });
 <span class="hljs-keyword">const</span> server = app.listen(<span class="hljs-number">3000</span>);
 </code></pre>
+<p><br><br></p>
+<p>The real implementation of koa includes many more features, but the fundamental
+idea is similar to the previous implementation. In particular, the request
+handler koa 1.x passes to the Node.js <code>http.createServer()</code> function is just
+the result of running koa-compose on the app&#39;s middleware plus
+post-processing to translate the <code>context</code> object into an HTTP response.</p>
+<p>For instance, the real implementation of koa exposes the request and response
+objects on the request context. In the minimal koa implementation, your
+middleware doesn&#39;t know anything about incoming requests, which makes it
+impossible to craft a real response. Supporting
+this feature would look like what you see below.</p>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Create a server with a co-based request handler</span>
+<span class="hljs-keyword">const</span> server = http.createServer((req, res) =&gt; {
+  co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-comment">// Expose req and res by default</span>
+    <span class="hljs-keyword">const</span> context = { req: req, res: res };
+    <span class="hljs-comment">// Execute all the middleware using the empty context object</span>
+    <span class="hljs-keyword">yield</span> composedMiddleware.call(context);
+    <span class="hljs-comment">// Once the middleware is done, send the request body</span>
+    res.end(context.body);
+  });
+});
+</code></pre>
+<p>Koa&#39;s middleware approach has some neat features. For instance, it is difficult
+to define a catch-all error handler in web frameworks like Express. However, in
+koa, defining an error handler is a trivial application of try/catch.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> koa = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa'</span>);
+<span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+<span class="hljs-keyword">const</span> app = koa();
+
+<span class="hljs-comment">// The first middleware is an error handler: if any subsequent</span>
+<span class="hljs-comment">// middleware throws an error, this try/catch will handle it.</span>
+app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">yield</span> next;
+  } <span class="hljs-keyword">catch</span> (error) {
+    <span class="hljs-keyword">this</span>.body = error.toString();
+    <span class="hljs-keyword">this</span>.status = <span class="hljs-number">500</span>;
+  }
+});
+
+<span class="hljs-comment">// So if google.com is down, this middleware will throw an error,</span>
+<span class="hljs-comment">// and the above middleware will report it as an HTTP 500.</span>
+app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">this</span>.body = (<span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>)).text;
+  <span class="hljs-keyword">yield</span> next;
+});
+
+app.listen(<span class="hljs-number">3000</span>);
+</code></pre>
+<h2 id="limitations-of-koa-compose">Limitations of koa-compose</h2>
+<p>Koa and koa-compose are powerful tools, but they are far from perfect. At the
+time of this writing, koa 2 is in alpha release and completely breaks the
+koa 1 API that you learned about in the koa section.</p>
+<pre><code class="lang-javascript"><span class="hljs-number">1</span>;
+</code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3410;
       var delta = 1680;
-      for (var i = 2; i < 31; ++i) {
+      for (var i = 2; i < 34; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

@@ -1,25 +1,27 @@
 # Table of Contents
 
-### 1. Getting Started With Generators [1](#1)
+### How To Use This Book [1](#1)
 
-1. What is a Generator? [1](#1)
-2. Case Study: Async Fibonacci [3](#3)
-3. For/Of Loops [5](#5)
-4. Error Handling [7](#7)
-5. Case Study: Handling Async Errors [8](#8)
+### 1. Getting Started With Generators [2](#2)
 
-### 2. Asynchronous Coroutines [10](#10)
+1. What is a Generator? [2](#2)
+2. Case Study: Async Fibonacci [4](#4)
+3. For/Of Loops [6](#6)
+4. Error Handling [8](#8)
+5. Case Study: Handling Async Errors [9](#9)
 
-1. Promises and Thunks [10](#10)
-2. Write Your Own Co [16](#16)
-3. Limitations [18](#18)
-4. Real Implementation of Co [20](#20)
+### 2. Asynchronous Coroutines [11](#11)
 
-### 3. Koa and Middleware [25](#25)
+1. Promises and Thunks [11](#11)
+2. Write Your Own Co [17](#17)
+3. Limitations [19](#19)
+4. Real Implementation of Co [21](#21)
 
-1. The koa-compose Module [26](#26)
-2. The Koa Web Framework [28](#28)
-3. Limitations of koa-compose
+### 3. Koa and Middleware [26](#26)
+
+1. The koa-compose Module [27](#27)
+2. The Koa Web Framework [29](#29)
+3. Limitations of koa-compose [32](#32)
 
 ### 4. Transpiling
 

@@ -211,4 +211,39 @@ describe('Chapter 3: Koa and Middleware', function() {
     });
     // acquit:ignore:end
   });
+
+  /** @import:content/chapter-3-koa-errors.md */
+  it('', (done) => {
+    const koa = require('koa');
+    const superagent = require('superagent');
+    const app = koa();
+
+    // The first middleware is an error handler: if any subsequent
+    // middleware throws an error, this try/catch will handle it.
+    app.use(function*(next) {
+      try {
+        yield next;
+      } catch(error) {
+        this.body = error.toString();
+        this.status = 500;
+      }
+    });
+
+    // So if google.com is down, this middleware will throw an error,
+    // and the above middleware will report it as an HTTP 500.
+    app.use(function*(next) {
+      this.body = (yield superagent.get('http://www.google.com')).text;
+      yield next;
+    });
+
+    app.listen(3000);
+    // acquit:ignore:start
+    done();
+    // acquit:ignore:end
+  });
+
+  /** @import:content/chapter-3-limitations.md */
+  it('Limitations of koa-compose', (done) => {
+    1;
+  });
 });
