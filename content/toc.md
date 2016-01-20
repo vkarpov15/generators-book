@@ -18,9 +18,8 @@
 ### 3. Koa and Middleware [25](#25)
 
 1. The koa-compose Module [26](#26)
-2. Introducing Koa
+2. The Koa Web Framework [28](#28)
 3. Limitations of koa-compose
-4. Case Study: Koa Error Handling Middleware
 
 ### 4. Transpiling
 

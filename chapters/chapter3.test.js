@@ -129,4 +129,57 @@ describe('Chapter 3: Koa and Middleware', function() {
       // acquit:ignore:end
     });
   });
+
+  /** @import:content/chapter-3-koa.md */
+  it('The Koa Web Framework', done => {
+    const koa = require('koa');
+    // Create a new koa app
+    const app = koa();
+    // Each app has its own sequence of middleware. The `.use()`
+    // function adds a generator function to the middleware chain.
+    app.use(function*(next) {
+      // `superagent.get('http://localhost:3000');` will now
+      // return 'Hello, World!'
+      this.body = 'Hello, World!';
+    });
+    const server = app.listen(3000);
+    // acquit:ignore:start
+    co(function*() {
+      const superagent = require('superagent');
+      const res = yield superagent.get('http://localhost:3000');
+      assert.equal(res.text, 'Hello, World!');
+      server.close();
+      done();
+    });
+    // acquit:ignore:end
+  });
+
+  /** @import:content/chapter-3-koa-2.md */
+  it('', done => {
+    const http = require('http');
+    const compose = require('koa-compose');
+    const koa = function() {
+      let middleware = [];
+      return {}
+    };
+    // Create a new koa app
+    const app = koa();
+    // Each app has its own sequence of middleware. The `.use()`
+    // function adds a generator function to the middleware chain.
+    app.use(function*(next) {
+      // `superagent.get('http://localhost:3000');` will now
+      // return 'Hello, World!'
+      this.body = 'Hello, World!';
+    });
+    const server = app.listen(3000);
+    // acquit:ignore:start
+    co(function*() {
+      const superagent = require('superagent');
+      const res = yield superagent.get('http://localhost:3000');
+      assert.equal(res.text, 'Hello, World!');
+      server.close();
+      done();
+    });
+    // acquit:ignore:end
+  });
 });
