@@ -157,11 +157,40 @@ describe('Chapter 3: Koa and Middleware', function() {
   /** @import:content/chapter-3-koa-2.md */
   it('', done => {
     const http = require('http');
+    const co = require('co');
     const compose = require('koa-compose');
+
+    // The minimal koa implementation
     const koa = function() {
+      // List of middleware
       let middleware = [];
-      return {}
+
+      // The real work is in this function, which creates the
+      // actual HTTP server
+      const listen = (port) => {
+        // First, koa-compose all the middleware together
+        const composedMiddleware = compose(middleware);
+        // Create a server with a co-based request handler
+        const server = http.createServer((req, res) => {
+          co(function*() {
+            const context = {};
+            // Execute all the middleware using the empty context object
+            yield composedMiddleware.call(context);
+            // Once the middleware is done, send the request body
+            res.end(context.body);
+          });
+        });
+        return server.listen(port);
+      };
+
+      return {
+        // The `use()` function just adds a new generator function to
+        // the list of middleware
+        use: (middlewareFn) => middleware.push(middlewareFn),
+        listen: listen
+      };
     };
+
     // Create a new koa app
     const app = koa();
     // Each app has its own sequence of middleware. The `.use()`

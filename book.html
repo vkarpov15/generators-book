@@ -1463,12 +1463,96 @@ app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(
 });
 <span class="hljs-keyword">const</span> server = app.listen(<span class="hljs-number">3000</span>);
 </code></pre>
+<p>The goal of this section is to write your own minimal take on koa. Koa is just
+a thin layer on top of koa-compose with some HTTP-specific syntactic sugar.
+Recall that koa-compose retains the same <code>this</code> across all middleware functions.
+In order to craft a response to an incoming HTTP request, koa requires you to
+set properties on <code>this</code>, also known as the koa <strong>context</strong>.</p>
+<p>Before you implement your own minimal koa, there&#39;s a couple key concepts you
+should be aware of. First, generator functions have a context
+(the value of the <code>this</code> keyword) just like
+regular JavaScript functions. The easiest way to call a generator with a
+pre-defined value of <code>this</code> is the <code>call()</code> function defined on every JavaScript
+function.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-keyword">this</span>);
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// Will print 'Hello, World!'</span>
+  <span class="hljs-keyword">yield</span> generatorFunction.call(<span class="hljs-string">'Hello, World!'</span>);
+});
+</code></pre>
+<p>The other key concept is the Node.js HTTP package. The ability to start an
+HTTP server is part of core Node.js. Here&#39;s how you would start an HTTP server
+on port 3000 that prints out &quot;Hello, World!&quot; as a response to every request.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> http = <span class="hljs-built_in">require</span>(<span class="hljs-string">'http'</span>);
+<span class="hljs-comment">// Create a new server with a request handler. `req` represents</span>
+<span class="hljs-comment">// the request, and `res` represents the response.</span>
+<span class="hljs-keyword">const</span> server = http.createServer((req, res) =&gt; res.end(<span class="hljs-string">'Hello, World!'</span>));
+<span class="hljs-comment">// Listen on port 3000</span>
+server.listen(<span class="hljs-number">3000</span>);
+</code></pre>
+<p><br><br></p>
+<p>The downside of Node.js&#39; vanilla HTTP package is that it doesn&#39;t provide an
+easy way to compose request handlers. You pass <code>createServer()</code> a function
+that takes in a request and a response, and you&#39;re responsible for figuring
+out what that function should be. Koa enables you to use koa-compose to compose
+generator functions into a route handler that&#39;s compatible with Node.js&#39; HTTP
+server package. With that in mind, below is a minimal implementation of koa
+that is sufficient to run your basic &#39;Hello, World&#39; example.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> http = <span class="hljs-built_in">require</span>(<span class="hljs-string">'http'</span>);
+<span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
+
+<span class="hljs-comment">// The minimal koa implementation</span>
+<span class="hljs-keyword">const</span> koa = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// List of middleware</span>
+  <span class="hljs-keyword">let</span> middleware = [];
+
+  <span class="hljs-comment">// The real work is in this function, which creates the</span>
+  <span class="hljs-comment">// actual HTTP server</span>
+  <span class="hljs-keyword">const</span> listen = (port) =&gt; {
+    <span class="hljs-comment">// First, koa-compose all the middleware together</span>
+    <span class="hljs-keyword">const</span> composedMiddleware = compose(middleware);
+    <span class="hljs-comment">// Create a server with a co-based request handler</span>
+    <span class="hljs-keyword">const</span> server = http.createServer((req, res) =&gt; {
+      co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+        <span class="hljs-keyword">const</span> context = {};
+        <span class="hljs-comment">// Execute all the middleware using the empty context object</span>
+        <span class="hljs-keyword">yield</span> composedMiddleware.call(context);
+        <span class="hljs-comment">// Once the middleware is done, send the request body</span>
+        res.end(context.body);
+      });
+    });
+    <span class="hljs-keyword">return</span> server.listen(port);
+  };
+
+  <span class="hljs-keyword">return</span> {
+    <span class="hljs-comment">// The `use()` function just adds a new generator function to</span>
+    <span class="hljs-comment">// the list of middleware</span>
+    use: (middlewareFn) =&gt; middleware.push(middlewareFn),
+    listen: listen
+  };
+};
+
+<span class="hljs-comment">// Create a new koa app</span>
+<span class="hljs-keyword">const</span> app = koa();
+<span class="hljs-comment">// Each app has its own sequence of middleware. The `.use()`</span>
+<span class="hljs-comment">// function adds a generator function to the middleware chain.</span>
+app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-comment">// `superagent.get('http://localhost:3000');` will now</span>
+  <span class="hljs-comment">// return 'Hello, World!'</span>
+  <span class="hljs-keyword">this</span>.body = <span class="hljs-string">'Hello, World!'</span>;
+});
+<span class="hljs-keyword">const</span> server = app.listen(<span class="hljs-number">3000</span>);
+</code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3410;
       var delta = 1680;
-      for (var i = 2; i < 30; ++i) {
+      for (var i = 2; i < 31; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
