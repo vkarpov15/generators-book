@@ -236,8 +236,9 @@ describe('Chapter 3: Koa and Middleware', function() {
       yield next;
     });
 
-    app.listen(3000);
+    const server = app.listen(3000);
     // acquit:ignore:start
+    server.close();
     done();
     // acquit:ignore:end
   });
@@ -263,5 +264,23 @@ describe('Chapter 3: Koa and Middleware', function() {
       done();
       // acquit:ignore:end
     });
+  });
+
+  /** @import:content/chapter-3-koa-limitations.md */
+  it('', (done) => {
+    // acquit:ignore:start
+    const koa = () => {
+      return { use: () => true, listen: () => true };
+    };
+    // acquit:ignore:end
+    const app = koa();
+    // In koa 2.x, you can use arrow functions as middleware
+    app.use((ctx) => {
+      ctx.body = 'Hello, World!';
+    });
+    const server = app.listen(3000);
+    // acquit:ignore:start
+    done();
+    // acquit:ignore:end
   });
 });

@@ -270,9 +270,9 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <ol>
 <li>The koa-compose Module <a href="#27">27</a></li>
 <li>The Koa Web Framework <a href="#29">29</a></li>
-<li>Limitations of koa-compose <a href="#32">32</a></li>
+<li>Limitations of koa-compose and Koa <a href="#32">32</a></li>
 </ol>
-<h3 id="4-transpiling">4. Transpiling</h3>
+<h3 id="4-transpiling-34-34-">4. Transpiling <a href="#34">34</a></h3>
 <ol>
 <li>Introducing <code>regenerator</code></li>
 <li>Parsing Generators With Esprima</li>
@@ -1632,15 +1632,16 @@ app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(
   <span class="hljs-keyword">yield</span> next;
 });
 
-app.listen(<span class="hljs-number">3000</span>);
+<span class="hljs-keyword">const</span> server = app.listen(<span class="hljs-number">3000</span>);
 </code></pre>
-<h2 id="limitations-of-koa-compose">Limitations of koa-compose</h2>
+<h2 id="limitations-of-koa-compose-and-koa">Limitations of koa-compose and Koa</h2>
 <p>Koa and koa-compose are powerful tools, but they are far from perfect. At the
 time of this writing, koa 2 is in alpha release and completely breaks the
 koa 1 API that you learned about in the koa section. Koa 1 also supports
 the composition module as a replacement for koa-compose. What&#39;s the issue
-with koa-compose? The first issue is koa-compose doesn&#39;t properly support
-returning values from middleware.</p>
+with koa-compose? One issue with koa-compose is that it doesn&#39;t properly
+support returning values from middleware. This is a minor issue, which is why koa
+v2 drops support for composition and uses koa-compose.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
 
 <span class="hljs-keyword">const</span> middleware1 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
@@ -1657,12 +1658,66 @@ co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span
   <span class="hljs-comment">// res is undefined!</span>
 });
 </code></pre>
+<p>Koa 1.x has several limitations. In this section, you&#39;ll learn about 2
+common complaints about koa 1.x that are resolved in koa 2.x.</p>
+<p>The first limitation is that the entire API for structuring your HTTP response
+is based on generators. As a matter of fact, if you pass anything other
+than a generator function to <code>app.use()</code>, koa will throw an error.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> koa = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa'</span>);
+<span class="hljs-keyword">const</span> app = koa();
+<span class="hljs-comment">// Throws 'AssertionError: app.use() requires a generator function'</span>
+app.use(() =&gt; { <span class="hljs-keyword">this</span>.body = <span class="hljs-string">'Hello, World'</span> });
+<span class="hljs-comment">// Throws 'AssertionError: app.use() requires a generator function'</span>
+app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{ <span class="hljs-keyword">this</span>.body = <span class="hljs-string">'Hello, World'</span> });
+</code></pre>
+<p>Generators are a powerful feature, but not right for all use cases. For
+instance, the upcoming ES2016 JavaScript language standard will support the
+<code>async</code> and <code>await</code> keywords, which will enable you to write asynchronous
+code without callbacks in the same way that <code>co</code> and <code>yield</code> do. Also, since
+ES5 doesn&#39;t support generators, running koa in ES5 environments is difficult.</p>
+<p>The way that koa 2.x works around this limitation is similar to the approach
+you used to overcome the limitations of your minimal v1 implementation of co:
+just use promises for everything.</p>
+<p><br><br><br></p>
+<p>In koa 2.x, the <code>next</code> parameter to your
+middleware is not a generator function: it&#39;s a plain-old function that returns
+a promise.</p>
+<pre><code class="lang-javascript">app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">ctx, next</span>) </span>{
+  next().then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">res</span>) </span>{
+    <span class="hljs-comment">// Executed after the rest of the middleware is done</span>
+    ctx.body = <span class="hljs-string">'Hello, World!'</span>;
+  });
+});
+</code></pre>
+<p>In addition to co, promises work with the ES2016 <code>async</code> and <code>await</code>
+keywords and are usable in ES5.</p>
+<p>The above example also hints at the second limitation of koa 1.x: relying
+on the <code>this</code> keyword. The <code>this</code> keyword is notorious for making JavaScript
+beginners&#39; lives difficult. Instead of using <code>this</code>, koa 2.x passes a
+&#39;context&#39; parameter (commonly abbreviated <code>ctx</code>) as the first parameter to
+your middleware function. The koa 2.x <code>ctx</code> parameter is analogous to the
+koa 1.x <code>this</code> keyword.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> app = koa();
+<span class="hljs-comment">// In koa 2.x, you can use arrow functions as middleware</span>
+app.use((ctx) =&gt; {
+  ctx.body = <span class="hljs-string">'Hello, World!'</span>;
+});
+<span class="hljs-keyword">const</span> server = app.listen(<span class="hljs-number">3000</span>);
+</code></pre>
+<h1 id="chapter-4-transpiling">Chapter 4: Transpiling</h1>
+<p>The last step on your journey to mastering generators is to learn how
+to transpile generators into ES5. A <strong>transpiler</strong> compiles one JavaScript
+dialect into another JavaScript dialect. In this chapter, you&#39;ll write a
+rudimentary transpiler that converts generator functions into plain-old
+JavaScript functions.</p>
+<pre><code class="lang-javascript"><span class="hljs-number">1</span>;
+</code></pre>
 
     </div>
     <script type="text/javascript">
-      var start = 3410;
-      var delta = 1680;
-      for (var i = 2; i < 34; ++i) {
+      var start = 3400;
+      var delta = 1681;
+      for (var i = 2; i < 36; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

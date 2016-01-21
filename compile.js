@@ -30,11 +30,13 @@ co(function*() {
   const chapter1 = yield thunkify(fs.readFile)('./chapters/chapter1.test.js');
   const chapter2 = yield thunkify(fs.readFile)('./chapters/chapter2.test.js');
   const chapter3 = yield thunkify(fs.readFile)('./chapters/chapter3.test.js');
+  const chapter4 = yield thunkify(fs.readFile)('./chapters/chapter4.test.js');
   const css = yield thunkify(fs.readFile)('./style.css');
   let markdown = acquit.parse(`
     ${chapter1.toString()}\n\n
     ${chapter2.toString()}\n\n
-    ${chapter3.toString()}`);
+    ${chapter3.toString()}\n\n
+    ${chapter4.toString()}`);
 
   const re = new RegExp('@import:[\\S]+', 'g');
   const matches = markdown.match(re);
@@ -63,9 +65,9 @@ co(function*() {
       ${marked(markdown)}
     </div>
     <script type="text/javascript">
-      var start = 3410;
-      var delta = 1680;
-      for (var i = 2; i < 34; ++i) {
+      var start = 3400;
+      var delta = 1681;
+      for (var i = 2; i < 36; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
