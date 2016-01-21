@@ -21,7 +21,7 @@
 
 1. The koa-compose Module [27](#27)
 2. The Koa Web Framework [29](#29)
-3. Limitations of koa-compose [32](#32)
+3. Limitations of koa-compose and Koa [32](#32)
 
 ### 4. Transpiling
 

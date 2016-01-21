@@ -1637,8 +1637,25 @@ app.listen(<span class="hljs-number">3000</span>);
 <h2 id="limitations-of-koa-compose">Limitations of koa-compose</h2>
 <p>Koa and koa-compose are powerful tools, but they are far from perfect. At the
 time of this writing, koa 2 is in alpha release and completely breaks the
-koa 1 API that you learned about in the koa section.</p>
-<pre><code class="lang-javascript"><span class="hljs-number">1</span>;
+koa 1 API that you learned about in the koa section. Koa 1 also supports
+the composition module as a replacement for koa-compose. What&#39;s the issue
+with koa-compose? The first issue is koa-compose doesn&#39;t properly support
+returning values from middleware.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> compose = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa-compose'</span>);
+
+<span class="hljs-keyword">const</span> middleware1 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> next;
+  <span class="hljs-keyword">return</span> res + <span class="hljs-string">'World!'</span>;
+};
+
+<span class="hljs-keyword">const</span> middleware2 = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">return</span> <span class="hljs-string">'Hello, '</span>;
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> compose([middleware1, middleware2])();
+  <span class="hljs-comment">// res is undefined!</span>
+});
 </code></pre>
 
     </div>

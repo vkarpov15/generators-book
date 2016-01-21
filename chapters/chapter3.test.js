@@ -243,7 +243,25 @@ describe('Chapter 3: Koa and Middleware', function() {
   });
 
   /** @import:content/chapter-3-limitations.md */
-  it('Limitations of koa-compose', (done) => {
-    1;
+  it('Limitations of koa-compose and Koa', (done) => {
+    const compose = require('koa-compose');
+
+    const middleware1 = function*(next) {
+      const res = yield next;
+      return res + 'World!';
+    };
+
+    const middleware2 = function*(next) {
+      return 'Hello, ';
+    };
+
+    co(function*() {
+      const res = yield compose([middleware1, middleware2])();
+      // res is undefined!
+      // acquit:ignore:start
+      assert.ok(!res);
+      done();
+      // acquit:ignore:end
+    });
   });
 });
