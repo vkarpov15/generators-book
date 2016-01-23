@@ -27,7 +27,7 @@
 
 1. Introducing Regenerator [34](#34)
 2. Faking a Generator Function [36](#36)
-3. Parsing Generators With Esprima
+3. Parsing Generators With Esprima [39](#39)
 4. Write Your Own Transpiler
 
 ### 5. Moving On

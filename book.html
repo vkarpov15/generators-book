@@ -1986,12 +1986,166 @@ function.</p>
   }
 };
 </code></pre>
+<h2 id="parsing-generators">Parsing Generators</h2>
+<p>In order to write a transpiler, you first need to learn to use a JavaScript
+parser. Esprima is one of the most well-adopted JavaScript parsers. In this
+section, you&#39;ll inspect the syntax trees esprima produces for generator
+functions in preparation for writing your own rudimentary transpiler.</p>
+<p>Esprima exposes a <code>parse()</code> function that takes in some JavaScript code and
+outputs a <strong>syntax tree</strong>. A syntax tree is a tree that represents the
+structure of the code - a syntax tree makes it much easier to transform
+code than if you just tried to manipulate a string.</p>
+<p><br></p>
+<p>Below is an example syntax tree for a simple generator function. In particular,
+note that the generator function expression is parsed onto a node that has
+a <code>type</code> property equal to &quot;FunctionExpression&quot; and a <code>generator</code> property
+that&#39;s set to true. It also has a <code>body</code> property that contains a <code>body</code> array
+property which contains a <code>return</code> statement.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> esprima = <span class="hljs-built_in">require</span>(<span class="hljs-string">'esprima'</span>);
+
+<span class="hljs-keyword">const</span> parsed = esprima.parse(<span class="hljs-string">`
+  const generatorFunction = function*() {
+    return 'Hello, World';
+  };`</span>).body;
+
+<span class="hljs-comment">/* `parsed` is an array that looks like what you see below
+[
+  {
+    "type": "VariableDeclaration",
+    "declarations": [
+      {
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "generatorFunction"
+        },
+        "init": {
+          "type": "FunctionExpression",
+          "id": null,
+          "params": [],
+          "defaults": [],
+          "body": {
+            "type": "BlockStatement",
+            "body": [
+              {
+                "type": "ReturnStatement",
+                "argument": {
+                  "type": "Literal",
+                  "value": "Hello, World",
+                  "raw": "'Hello, World'"
+                }
+              }
+            ]
+          },
+          "generator": true,
+          "expression": false
+        }
+      }
+    ],
+    "kind": "const"
+  }
+]
+*/</span>
+</code></pre>
+<p>Syntax trees can be confusing at first, but the key idea in this example is
+what generator functions look like in the syntax tree.</p>
+<p><br><br></p>
+<p>Let&#39;s take a look at a simple problem: count the number of generator functions
+in a piece of code. You&#39;d need to visit each node in the
+tree and check if it has a <code>type</code> property equal to &#39;FunctionExpression&#39; and
+a <code>generator</code> property equal to &#39;true&#39;. The hard part is how to visit each
+node in the tree. To make that easier, you&#39;ll use the estraverse module. This
+module lets you execute two functions for each node in the tree, an <code>enter()</code>
+function that executes before the traversal visits any child nodes, and
+a <code>leave()</code> function that executes after the traversal visits all child nodes.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> esprima = <span class="hljs-built_in">require</span>(<span class="hljs-string">'esprima'</span>);
+<span class="hljs-keyword">const</span> estraverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">'estraverse'</span>);
+
+<span class="hljs-keyword">const</span> parsed = esprima.parse(<span class="hljs-string">`
+  const generatorFunction = function*() {
+    yield function*() {
+      yield 'Hello, World!';
+    };
+  };`</span>);
+
+<span class="hljs-keyword">let</span> numGenerators = <span class="hljs-number">0</span>;
+estraverse.traverse(parsed, {
+  enter: (node, parent) =&gt; {
+    <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node.generator) {
+      ++numGenerators;
+    }
+  },
+  leave: () =&gt; {}
+});
+assert.equal(numGenerators, <span class="hljs-number">2</span>);
+</code></pre>
+<p>Let&#39;s take a look at a more challenging problem that will be more useful for
+your rudimentary transpiler: count the number of <code>yield</code> statements in each
+generator function. For instance, in the previous example, you had 2 generator
+functions, each with 1 yield statement.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>;
+  };
+};
+</code></pre>
+<p>For this example, the correct output would be <code>[1, 1]</code>, because both the first
+and the second generator functions have 1 yield statement. What about a
+trickier case?</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>;
+  };
+  <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>;
+};
+</code></pre>
+<p>The correct output is <code>[2, 1]</code> because the first generator function has 2
+yield statements. However, estraverse will visit the 2nd yield statement
+after the 2nd generator function.</p>
+<p><br></p>
+<p>To properly handle the case where you <code>yield</code> a generator and then <code>yield</code>
+another value, you&#39;re going to use a stack and the estraverse <code>leave()</code>
+function as shown below.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> parsed = esprima.parse(<span class="hljs-string">`
+  const generatorFunction = function*() {
+    yield function*() {
+      yield 'Hello, World!';
+    };
+    yield 'Hello, World!';
+  };`</span>);
+
+<span class="hljs-keyword">let</span> res = [];
+<span class="hljs-keyword">let</span> stack = [];
+estraverse.traverse(parsed, {
+  enter: (node, parent) =&gt; {
+    <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node.generator) {
+      <span class="hljs-comment">// We've found a new generator function, so add a 0 to the</span>
+      <span class="hljs-comment">// result array and push the index of this generator function's</span>
+      <span class="hljs-comment">// count in the result array onto the stack</span>
+      stack.push(res.length);
+      res.push(<span class="hljs-number">0</span>);
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'YieldExpression'</span>) {
+      <span class="hljs-comment">// We've found a yield statement! Increment the current</span>
+      <span class="hljs-comment">// generator function's count.</span>
+      ++res[stack[stack.length - <span class="hljs-number">1</span>]];
+    }
+  },
+  leave: (node, parent) =&gt; {
+    <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node.generator) {
+      <span class="hljs-comment">// We've visited everything within a generator function, so</span>
+      <span class="hljs-comment">// pop its index off the stack</span>
+      stack.pop();
+    }
+  }
+});
+assert.deepEqual(res, [<span class="hljs-number">2</span>, <span class="hljs-number">1</span>]);
+</code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 41; ++i) {
+      for (var i = 2; i < 45; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

@@ -202,4 +202,121 @@ describe('Chapter 4: Transpiling', () => {
     }).catch(done);
     // acquit:ignore:end
   });
+
+  /** @import:content/chapter-4-parsing-intro.md */
+  it('Parsing Generators With Esprima', (done) => {
+    const esprima = require('esprima');
+
+    const parsed = esprima.parse(`
+  const generatorFunction = function*() {
+    return 'Hello, World';
+  };`).body;
+
+    /* `parsed` is an array that looks like what you see below
+    [
+      {
+        "type": "VariableDeclaration",
+        "declarations": [
+          {
+            "type": "VariableDeclarator",
+            "id": {
+              "type": "Identifier",
+              "name": "generatorFunction"
+            },
+            "init": {
+              "type": "FunctionExpression",
+              "id": null,
+              "params": [],
+              "defaults": [],
+              "body": {
+                "type": "BlockStatement",
+                "body": [
+                  {
+                    "type": "ReturnStatement",
+                    "argument": {
+                      "type": "Literal",
+                      "value": "Hello, World",
+                      "raw": "'Hello, World'"
+                    }
+                  }
+                ]
+              },
+              "generator": true,
+              "expression": false
+            }
+          }
+        ],
+        "kind": "const"
+      }
+    ]
+    */
+    // acquit:ignore:start
+    done();
+    // acquit:ignore:end
+  });
+
+  /** @import:content/chapter-4-parsing-2.md */
+  it('', () => {
+    const esprima = require('esprima');
+    const estraverse = require('estraverse');
+
+    const parsed = esprima.parse(`
+  const generatorFunction = function*() {
+    yield function*() {
+      yield 'Hello, World!';
+    };
+  };`);
+
+    let numGenerators = 0;
+    estraverse.traverse(parsed, {
+      enter: (node, parent) => {
+        if (node.type === 'FunctionExpression' && node.generator) {
+          ++numGenerators;
+        }
+      },
+      leave: () => {}
+    });
+    assert.equal(numGenerators, 2);
+  });
+
+  /** @import:content/chapter-4-count-yield.md */
+  it('', () => {
+    // acquit:ignore:start
+    const esprima = require('esprima');
+    const estraverse = require('estraverse');
+    // acquit:ignore:end
+    const parsed = esprima.parse(`
+  const generatorFunction = function*() {
+    yield function*() {
+      yield 'Hello, World!';
+    };
+    yield 'Hello, World!';
+  };`);
+
+    let res = [];
+    let stack = [];
+    estraverse.traverse(parsed, {
+      enter: (node, parent) => {
+        if (node.type === 'FunctionExpression' && node.generator) {
+          // We've found a new generator function, so add a 0 to the
+          // result array and push the index of this generator function's
+          // count in the result array onto the stack
+          stack.push(res.length);
+          res.push(0);
+        } else if (node.type === 'YieldExpression') {
+          // We've found a yield statement! Increment the current
+          // generator function's count.
+          ++res[stack[stack.length - 1]];
+        }
+      },
+      leave: (node, parent) => {
+        if (node.type === 'FunctionExpression' && node.generator) {
+          // We've visited everything within a generator function, so
+          // pop its index off the stack
+          stack.pop();
+        }
+      }
+    });
+    assert.deepEqual(res, [2, 1]);
+  });
 });
