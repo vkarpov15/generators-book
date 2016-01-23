@@ -290,7 +290,6 @@ describe('Chapter 2: Asynchronous Coroutines', () => {
           res = yield superagent.get(url);
         } catch(error) { /* retry */ }
       }
-
       // res is undefined - retried 3 times with no results
       // acquit:ignore:start
       assert.ok(!res);

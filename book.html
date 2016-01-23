@@ -274,7 +274,8 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 </ol>
 <h3 id="4-transpiling-34-34-">4. Transpiling <a href="#34">34</a></h3>
 <ol>
-<li>Introducing <code>regenerator</code></li>
+<li>Introducing Regenerator <a href="#34">34</a></li>
+<li>Faking a Generator Function <a href="#36">36</a></li>
 <li>Parsing Generators With Esprima</li>
 <li>Write Your Own Transpiler</li>
 </ol>
@@ -1066,7 +1067,6 @@ is a for loop as shown below.</p>
       res = <span class="hljs-keyword">yield</span> superagent.get(url);
     } <span class="hljs-keyword">catch</span> (error) { <span class="hljs-comment">/* retry */</span> }
   }
-
   <span class="hljs-comment">// res is undefined - retried 3 times with no results</span>
 });
 </code></pre>
@@ -1710,14 +1710,288 @@ to transpile generators into ES5. A <strong>transpiler</strong> compiles one Jav
 dialect into another JavaScript dialect. In this chapter, you&#39;ll write a
 rudimentary transpiler that converts generator functions into plain-old
 JavaScript functions.</p>
-<pre><code class="lang-javascript"><span class="hljs-number">1</span>;
+<p>Parsing JavaScript is complex, however, learning how
+generators work in terms of ES5 JavaScript will test the limits of your
+knowledge of generator fundamentals. In order to get some insight into how
+to compile generators into ES5, you&#39;ll first learn about regenerator, Facebook&#39;s
+open-source transpiler for transforming generator functions into ES5.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> regenerator = <span class="hljs-built_in">require</span>(<span class="hljs-string">'regenerator'</span>);
+
+<span class="hljs-keyword">const</span> code = regenerator.compile(<span class="hljs-string">`
+  const generatorFunction = function*() {
+    yield 'Hello, World!';
+  };`</span>).code;
+
+<span class="hljs-comment">// Given the above simple generator function, regenerator will produce</span>
+<span class="hljs-comment">// the below code.</span>
+assert.equal(code, <span class="hljs-string">`
+  var generatorFunction = regeneratorRuntime.mark(function callee$0$0() {
+    return regeneratorRuntime.wrap(function callee$0$0$(context$1$0) {
+      while (1) switch (context$1$0.prev = context$1$0.next) {
+      case 0:
+        context$1$0.next = 2;
+        return 'Hello, World!';
+      case 2:
+      case "end":
+        return context$1$0.stop();
+      }
+    }, callee$0$0, this);
+  });`</span>);
+</code></pre>
+<h2 id="introducing-regenerator">Introducing Regenerator</h2>
+<p>Regenerator is a transpiler: it takes some JavaScript code as a string, and
+produces some equivalent JavaScript code as a string. When writing a transpiler,
+the two key questions are:</p>
+<ol>
+<li>What code do you want to transform?</li>
+<li>What do you want to transform the code into?</li>
+</ol>
+<p>In regenerator&#39;s case, the first question is simple: you want to transform
+every generator function <code>function*() {}</code> and every <code>yield</code> statement within a
+generator function. The second question is more subtle.</p>
+<p><br></p>
+<p>The ES2015 spec defines
+a generator solely in terms of which properties it has. In other words, any
+JavaScript object can be a generator, not just the return value of a generator
+function. When it comes to JavaScript language APIs, the letter of the law
+is vastly more important than the spirit of the law. Any JavaScript object
+with a <code>next()</code> function and a <code>throw()</code> function is a generator as far as
+co is concerned. For example, if you have an object with a <code>next()</code> function
+that returns a promise like you see below, co will still recognize it as a
+generator. Note that there are no <code>function*()</code> definitions.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+
+<span class="hljs-comment">// `plainFunction` is **not** a generator function because</span>
+<span class="hljs-comment">// it isn't declared with `function*() {}`. However, it returns</span>
+<span class="hljs-comment">// an object that qualifies as a generator.</span>
+<span class="hljs-keyword">var</span> plainFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> {
+    <span class="hljs-comment">// `next()` and `throw()` are the only properties necessary for</span>
+    <span class="hljs-comment">// an object to qualify as a generator.</span>
+    next: () =&gt; {
+      <span class="hljs-keyword">return</span> {
+        <span class="hljs-comment">// Note that this generator's `next()` returns a promise</span>
+        value: superagent.get(<span class="hljs-string">'http://www.google.com'</span>),
+        done: <span class="hljs-literal">true</span>
+      };
+    },
+    <span class="hljs-comment">// `throw()` doesn't get used in this example</span>
+    <span class="hljs-keyword">throw</span>: (error) =&gt; {
+      <span class="hljs-keyword">throw</span> error;
+    }
+  };
+};
+
+co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// You can use the fake generator returned by `plainFunction`</span>
+  <span class="hljs-comment">// with co, since it "yields" a promise.</span>
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> plainFunction();
+  <span class="hljs-comment">// res.text now contains Google's home page HTML!</span>
+});
+</code></pre>
+<p>The general idea of regenerator is simple: convert a generator function into
+a regular function that returns an object that fulfills the ES2015 generator
+API. Of course, the fake generator needs to return the correct values for
+<code>next()</code>: every <code>yield</code> statement needs to cause a <code>next()</code> function call
+to return. The above example is not sophisticated, it only allows you to
+return a single value. You&#39;ll learn about how you can replace yield statements
+with ES5 code in the &quot;Faking a Generator Function&quot; section.</p>
+<p><br><br><br><br><br><br></p>
+<p>Below is an example of using regenerator output with co. Note that,
+even though it isn&#39;t defined using <code>function*</code>, co still accepts the
+<code>generatorFunction</code> as a valid generator function. Like the fake version
+of co you saw in the &quot;Asynchronous Coroutines&quot; chapter, co defines a generator
+function as any object whose <code>constructor.name</code> property is equal to
+&#39;Generator Function&#39;. Regenerator is smart enough to change this property for
+you.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> regenerator = <span class="hljs-built_in">require</span>(<span class="hljs-string">'regenerator'</span>);
+<span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+<span class="hljs-comment">// Necessary to include the `regeneratorRuntime` variable</span>
+<span class="hljs-comment">// that you use in the below generated code.</span>
+regenerator.runtime();
+
+<span class="hljs-comment">// The below code is regenerator's output when it transpiles</span>
+<span class="hljs-comment">//</span>
+<span class="hljs-comment">// const generatorFunction = function*() {</span>
+<span class="hljs-comment">//   return superagent.get('http://www.google.com');</span>
+<span class="hljs-comment">// };</span>
+<span class="hljs-keyword">var</span> generatorFunction = regeneratorRuntime.mark(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">callee$0$0</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> regeneratorRuntime.wrap(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">callee$0$0$</span>(<span class="hljs-params">context$1$0</span>) </span>{
+    <span class="hljs-keyword">while</span> (<span class="hljs-number">1</span>) <span class="hljs-keyword">switch</span> (context$<span class="hljs-number">1</span>$<span class="hljs-number">0.</span>prev = context$<span class="hljs-number">1</span>$<span class="hljs-number">0.</span>next) {
+      <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>:
+        <span class="hljs-keyword">return</span> context$<span class="hljs-number">1</span>$<span class="hljs-number">0.</span>abrupt(<span class="hljs-string">"return"</span>,
+          superagent.get(<span class="hljs-string">'http://www.google.com'</span>));
+      <span class="hljs-keyword">case</span> <span class="hljs-number">1</span>:
+      <span class="hljs-keyword">case</span> <span class="hljs-string">"end"</span>:
+        <span class="hljs-keyword">return</span> context$<span class="hljs-number">1</span>$<span class="hljs-number">0.</span>stop();
+    }
+  }, callee$<span class="hljs-number">0</span>$<span class="hljs-number">0</span>, <span class="hljs-keyword">this</span>);
+});
+
+<span class="hljs-comment">// 'GeneratorFunction'</span>
+generatorFunction.constructor.name;
+
+co(generatorFunction).then((res) =&gt; {
+  <span class="hljs-comment">// res.text contains google's home page!</span>
+});
+</code></pre>
+<h2 id="faking-a-generator-function">Faking a Generator Function</h2>
+<p>The first key idea for writing generator functions in ES5 is that a generator
+can be thought of as a series of functions calls that return values. The
+difference between <code>yield</code> and <code>return</code> is that you can&#39;t resume a function after
+<code>return</code> has been called. Thus, in order to build a generator function out of
+normal functions, you need multiple function calls.</p>
+<p>Regenerator handles this by creating a function that gets a parameter which
+defines which &quot;step&quot; the generator is on. A step ends with a <code>return</code> statement, or a <code>yield</code> statement, which is transformed into a <code>return</code>. You can think
+of a generator as being on the x-th step if there have been x yield statements
+thus far.</p>
+<p><br></p>
+<p>Let&#39;s take a look at an example. Suppose you have the below generator function.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> (<span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>)).text;
+};
+</code></pre>
+<p>The above generator function has 2 steps:</p>
+<ol>
+<li><code>superagent.get(&#39;http://www.google.com&#39;)</code></li>
+<li><code>return</code> the <code>text</code> property from the value that <code>generator.next()</code> gives you.</li>
+</ol>
+<p>In the below function, the <code>generatorLogic()</code> function executes these two steps.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
+<span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
+
+<span class="hljs-comment">// Behaves like the below generator function:</span>
+<span class="hljs-comment">// const generatorFunction = function*() {</span>
+<span class="hljs-comment">//   return (yield superagent.get('http://www.google.com')).text;</span>
+<span class="hljs-comment">// };</span>
+<span class="hljs-keyword">const</span> fakeGeneratorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> step = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">const</span> numSteps = <span class="hljs-number">2</span>;
+  <span class="hljs-comment">// This function takes the value that was passed to `next()` and</span>
+  <span class="hljs-comment">// the 'step' that the generator is on.</span>
+  <span class="hljs-keyword">const</span> generatorLogic = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">v, step</span>) </span>{
+    <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) <span class="hljs-keyword">return</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+    <span class="hljs-keyword">if</span> (step === <span class="hljs-number">1</span>) <span class="hljs-keyword">return</span> v.text;
+  }
+
+  <span class="hljs-keyword">return</span> {
+    next: (v) =&gt; {
+      <span class="hljs-comment">// For the first n-1 functions, return `done: false`</span>
+      <span class="hljs-keyword">if</span> (step &lt; numSteps - <span class="hljs-number">1</span>) {
+        <span class="hljs-keyword">return</span> {
+          done: <span class="hljs-literal">false</span>,
+          value: generatorLogic(v, step++)
+        };
+      }
+      <span class="hljs-comment">// For last function, return `done: true`</span>
+      <span class="hljs-comment">// (like a `return` in a generator)</span>
+      <span class="hljs-keyword">return</span> {
+        done: <span class="hljs-literal">true</span>,
+        value: generatorLogic(v, step++)
+      };
+    },
+    <span class="hljs-keyword">throw</span>: (error) =&gt; {
+      <span class="hljs-keyword">throw</span> error;
+    }
+  }
+};
+</code></pre>
+<p><br><br><br></p>
+<p>There are two key points the previous example glossed over. The first point
+is what happens with variable assignments? Suppose you had a generator function
+that assigned to a variable.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> res = <span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+  <span class="hljs-keyword">return</span> res.text;
+};
+</code></pre>
+<p>The <code>generatorLogic()</code> function needs to get called multiple times, and after
+each <code>return</code> the function stack gets wiped out. There&#39;s no way to persist
+local variables between calls to <code>generatorLogic()</code>. Right about now you&#39;re
+probably starting to miss generators. The workaround is to store variables in
+an object outside of the <code>generatorLogic()</code> function.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> variables = {};
+
+<span class="hljs-keyword">const</span> fakeGeneratorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">v, step</span>) </span>{
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) <span class="hljs-keyword">return</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">1</span>) {
+    variables[<span class="hljs-string">'res'</span>] = v;
+    <span class="hljs-keyword">return</span> variables[<span class="hljs-string">'res'</span>].text;
+  }
+};
+</code></pre>
+<p>The second and more tricky point is how to handle errors and try/catch. Remember
+that generators have a <code>throw()</code> method that lets you trigger an error in the
+generator function that you can try/catch. For instance:</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> res;
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-comment">// You'll get an error here (so the `catch` block will execute)</span>
+    <span class="hljs-comment">// because co will call `throw()` when this `superagent.get()`</span>
+    <span class="hljs-comment">// call fails.</span>
+    res = <span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://notvalid.baddomain'</span>);
+  } <span class="hljs-keyword">catch</span>(err) {
+    <span class="hljs-comment">// When the error is thrown, this will return</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-string">'Failed'</span>;
+  }
+  <span class="hljs-keyword">return</span> res.text;
+};
+</code></pre>
+<p>The general idea is that your <code>generatorLogic()</code> function needs to take an
+<code>error</code> parameter, and you need to have a separate case for if you&#39;re on
+step 1 and <code>generator.throw()</code> was called. In other words, the catch block
+above needs to be in a separate <code>if()</code> statement.</p>
+<p><br><br><br><br><br><br></p>
+<p>Below is an example of how you can handle errors in your fake generator
+function.</p>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Behaves like the below generator function:</span>
+<span class="hljs-comment">// const generatorFunction = function*() {</span>
+<span class="hljs-comment">//   let res;</span>
+<span class="hljs-comment">//   try {</span>
+<span class="hljs-comment">//     res = yield superagent.get('http://notvalid.baddomain');</span>
+<span class="hljs-comment">//   } catch(err) {</span>
+<span class="hljs-comment">//     return 'Failed';</span>
+<span class="hljs-comment">//   }</span>
+<span class="hljs-comment">//   return res.text;</span>
+<span class="hljs-comment">// };</span>
+<span class="hljs-keyword">const</span> fakeGeneratorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> step = <span class="hljs-number">0</span>;
+  <span class="hljs-keyword">let</span> variables = {};
+  <span class="hljs-keyword">const</span> numSteps = <span class="hljs-number">2</span>;
+  <span class="hljs-keyword">const</span> result = (value, done) =&gt; {
+    <span class="hljs-keyword">return</span> {
+      value: value,
+      done: done
+    };
+  };
+  <span class="hljs-keyword">const</span> url = <span class="hljs-string">'http://nota.baddomain'</span>;
+
+  <span class="hljs-keyword">const</span> generatorLogic = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">v, step, error</span>) </span>{
+    <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) <span class="hljs-keyword">return</span> result(superagent.get(url), <span class="hljs-literal">false</span>);
+    <span class="hljs-comment">// This is the catch block</span>
+    <span class="hljs-keyword">if</span> (step === <span class="hljs-number">1</span> &amp;&amp; error) <span class="hljs-keyword">return</span> result(<span class="hljs-string">'Failed'</span>, <span class="hljs-literal">true</span>);
+    <span class="hljs-keyword">if</span> (step === <span class="hljs-number">1</span>) {
+      variables[<span class="hljs-string">'res'</span>] = v;
+      <span class="hljs-keyword">return</span> result(variables[<span class="hljs-string">'res'</span>].text, <span class="hljs-literal">true</span>);
+    }
+    <span class="hljs-keyword">if</span> (error) <span class="hljs-keyword">throw</span> error;
+  }
+
+  <span class="hljs-keyword">return</span> {
+    next: (v) =&gt; generatorLogic(v, step++),
+    <span class="hljs-comment">// `throw()` needs to set the error parameter to `next()`</span>
+    <span class="hljs-keyword">throw</span>: (error) =&gt; generatorLogic(<span class="hljs-literal">null</span>, step++, error)
+  }
+};
 </code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 36; ++i) {
+      for (var i = 2; i < 41; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
