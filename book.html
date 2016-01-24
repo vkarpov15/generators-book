@@ -276,7 +276,7 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <ol>
 <li>Introducing Regenerator <a href="#34">34</a></li>
 <li>Faking a Generator Function <a href="#36">36</a></li>
-<li>Parsing Generators With Esprima</li>
+<li>Parsing Generators With Esprima <a href="#39">39</a></li>
 <li>Write Your Own Transpiler</li>
 </ol>
 <h3 id="5-moving-on">5. Moving On</h3>
@@ -1986,7 +1986,7 @@ function.</p>
   }
 };
 </code></pre>
-<h2 id="parsing-generators">Parsing Generators</h2>
+<h2 id="parsing-generators-with-esprima">Parsing Generators With Esprima</h2>
 <p>In order to write a transpiler, you first need to learn to use a JavaScript
 parser. Esprima is one of the most well-adopted JavaScript parsers. In this
 section, you&#39;ll inspect the syntax trees esprima produces for generator
@@ -2139,6 +2139,49 @@ estraverse.traverse(parsed, {
   }
 });
 assert.deepEqual(res, [<span class="hljs-number">2</span>, <span class="hljs-number">1</span>]);
+</code></pre>
+<h2 id="write-your-own-transpiler">Write Your Own Transpiler</h2>
+<p>Now that you&#39;ve seen how the syntax tree for generator functions looks, it&#39;s
+time to implement a rudimentary transpiler for generator functions. Your
+transpiler will be far from a fully fledged regenerator replacement, but it
+will be able to transpile some basic generator functions.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> esprima = <span class="hljs-built_in">require</span>(<span class="hljs-string">'esprima'</span>);
+<span class="hljs-keyword">const</span> estraverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">'estraverse'</span>);
+<span class="hljs-keyword">const</span> escodegen = <span class="hljs-built_in">require</span>(<span class="hljs-string">'escodegen'</span>);
+
+<span class="hljs-keyword">const</span> parsed = esprima.parse(<span class="hljs-string">`
+  const generatorFunction = function*() {
+    yield 'Hello, World';
+  };`</span>);
+
+estraverse.replace(parsed, {
+  enter: (node, parent) =&gt; {
+    <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node.generator) {
+      node.generator = <span class="hljs-literal">false</span>;
+      node.params.push({
+        type: <span class="hljs-string">'Identifier'</span>,
+        name: <span class="hljs-string">'v'</span>
+      });
+      node.params.push({
+        type: <span class="hljs-string">'Identifier'</span>,
+        name: <span class="hljs-string">'step'</span>
+      });
+      node._numYields = <span class="hljs-number">0</span>;
+
+      <span class="hljs-keyword">return</span> {
+        type: <span class="hljs-string">'CallExpression'</span>,
+        callee: {
+          type: <span class="hljs-string">'Identifier'</span>,
+          name: <span class="hljs-string">'GeneratorFunction'</span>
+        },
+        <span class="hljs-built_in">arguments</span>: [node]
+      }
+    }
+  },
+  leave: (node, parent) =&gt; {}
+});
+
+<span class="hljs-built_in">console</span>.log(escodegen.generate(parsed));
 </code></pre>
 
     </div>
