@@ -171,7 +171,6 @@ describe('Chapter 4: Transpiling', () => {
     const fakeGeneratorFunction = function() {
       let step = 0;
       let variables = {};
-      const numSteps = 2;
       const result = (value, done) => {
         return { value: value, done: done };
       };
@@ -203,6 +202,52 @@ describe('Chapter 4: Transpiling', () => {
     // acquit:ignore:end
   });
 
+  /** @import:content/chapter-4-fake-api.md */
+  it('', done => {
+    // acquit:ignore:start
+    const co = require('co');
+    const superagent = require('superagent');
+    // acquit:ignore:end
+    // We'll use 2 functions to convert a regular function into a
+    // generator. `generatorResult()` returns an object with the same
+    // format that `generator.next()` does.
+    const generatorResult = (value, done) => {
+      return { value: value, done: done };
+    };
+
+    // `GeneratorFunction()` converts a fake generator function that
+    // takes the `v` and `step` parameters into something you can pass
+    // to `co()`
+    const GeneratorFunction = function(fakeGeneratorFunction) {
+      let res = () => {
+        let step = 0;
+
+        return {
+          next: (v) => fakeGeneratorFunction(v, step++),
+          throw: (error) => { throw error; }
+        }
+      };
+      // Make the result look like a generator function
+      Object.defineProperty(res.constructor, 'name',
+        { value: 'GeneratorFunction' });
+
+      // Note that this example returns an actual faked generator
+      // function rather than a fake generator like previous examples.
+      return res;
+    };
+
+    // Here's an example of passing a basic fake generator function
+    // to `GeneratorFunction()`
+    co(GeneratorFunction(function(v, step) {
+      if (step === 0) return generatorResult(
+        superagent.get('http://www.google.com'), false);
+      return generatorResult(undefined, true);
+    }))
+    // acquit:ignore:start
+    .then(() => done());
+    // acquit:ignore:end
+  });
+
   /** @import:content/chapter-4-parsing-intro.md */
   it('Parsing Generators With Esprima', (done) => {
     const esprima = require('esprima');
@@ -219,15 +264,10 @@ describe('Chapter 4: Transpiling', () => {
         "declarations": [
           {
             "type": "VariableDeclarator",
-            "id": {
-              "type": "Identifier",
-              "name": "generatorFunction"
-            },
+            "id": { "type": "Identifier", "name": "generatorFunction" },
             "init": {
               "type": "FunctionExpression",
-              "id": null,
               "params": [],
-              "defaults": [],
               "body": {
                 "type": "BlockStatement",
                 "body": [
@@ -241,15 +281,13 @@ describe('Chapter 4: Transpiling', () => {
                   }
                 ]
               },
-              "generator": true,
-              "expression": false
+              "generator": true
             }
           }
         ],
         "kind": "const"
       }
-    ]
-    */
+    ] */
     // acquit:ignore:start
     done();
     // acquit:ignore:end
@@ -325,15 +363,13 @@ describe('Chapter 4: Transpiling', () => {
     const esprima = require('esprima');
     const estraverse = require('estraverse');
     const escodegen = require('escodegen');
-
+    const clone = (v) => JSON.parse(JSON.stringify(v));
     const parsed = esprima.parse(`
+  const variables = [];
   const generatorFunction = function*() {
-    yield 'Hello, World';
-    return 'test';
+    variables['res'] = yield superagent.get('http://www.google.com');
+    return variables['res'];
   };`);
-
-  const _parsed = esprima.parse(`var f = function*() { yield a(true); }`);
-  console.log(JSON.stringify(_parsed, null, '  '));
 
     let steps = [];
     let generatorStack = [];
@@ -345,17 +381,6 @@ describe('Chapter 4: Transpiling', () => {
           node.params.push({ type: 'Identifier', name: 'step' });
           node._steps = [[]];
           generatorStack.push(node);
-
-          /*node.body.body = [{
-            type: 'IfStatement',
-            test: {
-              type: 'BinaryExpression',
-              operator: '===',
-              left: { type: 'Identifier', name: 'step' },
-              right: { type: 'Literal', value: 0, raw: '0' }
-            },
-            consequent: JSON.parse(JSON.stringify(node.body))
-          }];*/
 
           return {
             type: 'CallExpression',
@@ -384,7 +409,7 @@ describe('Chapter 4: Transpiling', () => {
               },
               consequent: {
                 type: 'BlockStatement',
-                body: JSON.parse(JSON.stringify(node._steps[i]))
+                body: clone(node._steps[i])
               }
             });
           }
@@ -408,6 +433,7 @@ describe('Chapter 4: Transpiling', () => {
             };
           } else if (node.type === 'YieldExpression') {
             node.type = 'ReturnStatement';
+            node._wasYield = true;
             node.argument = {
               type: 'CallExpression',
               callee: {
@@ -426,7 +452,23 @@ describe('Chapter 4: Transpiling', () => {
           }
 
           generatorStack[generatorStack.length - 1]._steps.push([]);
+        } else if (node.type === 'ExpressionStatement' && node.expression.type === 'AssignmentExpression') {
+          if (node.expression.right._wasYield) {
+            const newNode = clone(node);
+            newNode.expression.right = { type: 'Identifier', name: 'v' };
+            const generator = generatorStack[generatorStack.length - 1];
+            generator._steps[generator._steps.length - 1].push(newNode);
+            node.type = 'ReturnStatement';
+            node.argument = node.expression.right.argument;
+          }
         }
+      }
+    });
+
+    estraverse.replace(parsed, {
+      enter: (node, parent) => {},
+      leave: (node, parent) => {
+
       }
     });
 

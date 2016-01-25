@@ -17,7 +17,7 @@ h2 {
   padding-top: 75px;
 }
 
-h2#write-your-own-co, h2#real-implementation-of-co {
+h2#write-your-own-co, h2#real-implementation-of-co, h2#write-your-own-transpiler {
   page-break-before: always;
 }
 
@@ -25,7 +25,7 @@ h2#write-your-own-co, h2#real-implementation-of-co {
   page-break-before: always;
 }
 
-h1,h2,h3,h4,p,ul,ol,pre {
+h1,h2,h3,h4,p,ul,ol,:not(li) > pre {
   margin-left: 50px;
   margin-right: 50px;
 }
@@ -45,10 +45,6 @@ p, li {
 
 p code {
   color: #232323;
-}
-
-li {
-  margin-left: 50px;
 }
 
 a {
@@ -276,7 +272,7 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <ol>
 <li>Introducing Regenerator <a href="#34">34</a></li>
 <li>Faking a Generator Function <a href="#36">36</a></li>
-<li>Parsing Generators With Esprima <a href="#39">39</a></li>
+<li>Parsing Generators With Esprima <a href="#41">41</a></li>
 <li>Write Your Own Transpiler</li>
 </ol>
 <h3 id="5-moving-on">5. Moving On</h3>
@@ -1959,7 +1955,6 @@ function.</p>
 <span class="hljs-keyword">const</span> fakeGeneratorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
   <span class="hljs-keyword">let</span> step = <span class="hljs-number">0</span>;
   <span class="hljs-keyword">let</span> variables = {};
-  <span class="hljs-keyword">const</span> numSteps = <span class="hljs-number">2</span>;
   <span class="hljs-keyword">const</span> result = (value, done) =&gt; {
     <span class="hljs-keyword">return</span> {
       value: value,
@@ -1986,6 +1981,72 @@ function.</p>
   }
 };
 </code></pre>
+<p>In this section, your transpiler will <strong>not</strong> account for try/catch blocks
+and variable assignments. Implementing these details would make the transpiler
+too complex to serve as an digestible example. However, the previous examples
+sketch the general idea of how you would implement variable assignments and
+try/catch blocks.</p>
+<p>There&#39;s one more detail to account for: defining an API for the generator
+runtime that your transpiled generator functions will use. Your transpiler
+will convert generator function code like what you see below:</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+};
+</code></pre>
+<p><br></p>
+<p>The converted ES5 code will look like what you see below.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> generatorFunction = GeneratorFunction(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">v, step</span>) </span>{
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) <span class="hljs-keyword">return</span> generatorResult(
+    superagent.get(<span class="hljs-string">'http://www.google.com'</span>), <span class="hljs-literal">false</span>);
+  <span class="hljs-keyword">return</span> generatorResult(<span class="hljs-literal">undefined</span>, <span class="hljs-literal">true</span>);
+});
+</code></pre>
+<p>The above code uses 2 functions, <code>GeneratorFunction()</code> and <code>generatorResult()</code>.
+These functions are the API for your generator runtime. Don&#39;t worry, they&#39;re
+only cosmetically different from the logic in <code>fakeGeneratorFunction()</code> in
+previous examples.</p>
+<pre><code class="lang-javascript"><span class="hljs-comment">// We'll use 2 functions to convert a regular function into a</span>
+<span class="hljs-comment">// generator. `generatorResult()` returns an object with the same</span>
+<span class="hljs-comment">// format that `generator.next()` does.</span>
+<span class="hljs-keyword">const</span> generatorResult = (value, done) =&gt; {
+  <span class="hljs-keyword">return</span> {
+    value: value,
+    done: done
+  };
+};
+
+<span class="hljs-comment">// `GeneratorFunction()` converts a fake generator function that</span>
+<span class="hljs-comment">// takes the `v` and `step` parameters into something you can pass</span>
+<span class="hljs-comment">// to `co()`</span>
+<span class="hljs-keyword">const</span> GeneratorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">fakeGeneratorFunction</span>) </span>{
+  <span class="hljs-keyword">let</span> res = () =&gt; {
+    <span class="hljs-keyword">let</span> step = <span class="hljs-number">0</span>;
+
+    <span class="hljs-keyword">return</span> {
+      next: (v) =&gt; fakeGeneratorFunction(v, step++),
+      <span class="hljs-keyword">throw</span>: (error) =&gt; {
+        <span class="hljs-keyword">throw</span> error;
+      }
+    }
+  };
+  <span class="hljs-comment">// Make the result look like a generator function</span>
+  <span class="hljs-built_in">Object</span>.defineProperty(res.constructor, <span class="hljs-string">'name'</span>, {
+    value: <span class="hljs-string">'GeneratorFunction'</span>
+  });
+
+  <span class="hljs-comment">// Note that this example returns an actual faked generator</span>
+  <span class="hljs-comment">// function rather than a fake generator like previous examples.</span>
+  <span class="hljs-keyword">return</span> res;
+};
+
+<span class="hljs-comment">// Here's an example of passing a basic fake generator function</span>
+<span class="hljs-comment">// to `GeneratorFunction()`</span>
+co(GeneratorFunction(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">v, step</span>) </span>{
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) <span class="hljs-keyword">return</span> generatorResult(
+    superagent.get(<span class="hljs-string">'http://www.google.com'</span>), <span class="hljs-literal">false</span>);
+  <span class="hljs-keyword">return</span> generatorResult(<span class="hljs-literal">undefined</span>, <span class="hljs-literal">true</span>);
+}))
+</code></pre>
 <h2 id="parsing-generators-with-esprima">Parsing Generators With Esprima</h2>
 <p>In order to write a transpiler, you first need to learn to use a JavaScript
 parser. Esprima is one of the most well-adopted JavaScript parsers. In this
@@ -1995,7 +2056,6 @@ functions in preparation for writing your own rudimentary transpiler.</p>
 outputs a <strong>syntax tree</strong>. A syntax tree is a tree that represents the
 structure of the code - a syntax tree makes it much easier to transform
 code than if you just tried to manipulate a string.</p>
-<p><br></p>
 <p>Below is an example syntax tree for a simple generator function. In particular,
 note that the generator function expression is parsed onto a node that has
 a <code>type</code> property equal to &quot;FunctionExpression&quot; and a <code>generator</code> property
@@ -2015,15 +2075,10 @@ property which contains a <code>return</code> statement.</p>
     "declarations": [
       {
         "type": "VariableDeclarator",
-        "id": {
-          "type": "Identifier",
-          "name": "generatorFunction"
-        },
+        "id": { "type": "Identifier", "name": "generatorFunction" },
         "init": {
           "type": "FunctionExpression",
-          "id": null,
           "params": [],
-          "defaults": [],
           "body": {
             "type": "BlockStatement",
             "body": [
@@ -2037,19 +2092,17 @@ property which contains a <code>return</code> statement.</p>
               }
             ]
           },
-          "generator": true,
-          "expression": false
+          "generator": true
         }
       }
     ],
     "kind": "const"
   }
-]
-*/</span>
+] */</span>
 </code></pre>
+<p><br></p>
 <p>Syntax trees can be confusing at first, but the key idea in this example is
 what generator functions look like in the syntax tree.</p>
-<p><br><br></p>
 <p>Let&#39;s take a look at a simple problem: count the number of generator functions
 in a piece of code. You&#39;d need to visit each node in the
 tree and check if it has a <code>type</code> property equal to &#39;FunctionExpression&#39; and
@@ -2099,10 +2152,10 @@ trickier case?</p>
   <span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello, World!'</span>;
 };
 </code></pre>
+<p><br></p>
 <p>The correct output is <code>[2, 1]</code> because the first generator function has 2
 yield statements. However, estraverse will visit the 2nd yield statement
 after the 2nd generator function.</p>
-<p><br></p>
 <p>To properly handle the case where you <code>yield</code> a generator and then <code>yield</code>
 another value, you&#39;re going to use a stack and the estraverse <code>leave()</code>
 function as shown below.</p>
@@ -2142,18 +2195,68 @@ assert.deepEqual(res, [<span class="hljs-number">2</span>, <span class="hljs-num
 </code></pre>
 <h2 id="write-your-own-transpiler">Write Your Own Transpiler</h2>
 <p>Now that you&#39;ve seen how the syntax tree for generator functions looks, it&#39;s
-time to implement a rudimentary transpiler for generator functions. Your
+time to implement a rudimentary transpiler for generator functions using
+your runtime API from the &quot;Faking a Generator Function&quot; section. Your
 transpiler will be far from a fully fledged regenerator replacement, but it
 will be able to transpile some basic generator functions.</p>
+<p>The transpiler needs to perform 3 distinct tasks:</p>
+<ul>
+<li>Convert generator functions into calls to <code>GeneratorFunction()</code>.</li>
+</ul>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Before</span>
+<span class="hljs-keyword">const</span> f = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{};
+</code></pre>
+<pre><code class="lang-javascript"><span class="hljs-comment">// After</span>
+<span class="hljs-keyword">const</span> f = GeneratorFunction(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">v, step</span>)) </span>{}
+</code></pre>
+<ul>
+<li>Convert <code>yield</code> and <code>return</code> expressions to returns that use
+<code>generatorResult()</code>.</li>
+</ul>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Before</span>
+<span class="hljs-keyword">yield</span> <span class="hljs-string">'Hello'</span>;
+<span class="hljs-keyword">return</span> <span class="hljs-string">'World'</span>;
+</code></pre>
+<pre><code class="lang-javascript"><span class="hljs-comment">// After</span>
+<span class="hljs-keyword">return</span> generatorResult(<span class="hljs-string">'Hello'</span>, <span class="hljs-literal">false</span>);
+<span class="hljs-keyword">return</span> generatorResult(<span class="hljs-string">'World'</span>, <span class="hljs-literal">true</span>);
+</code></pre>
+<ul>
+<li>Break the function body up into steps based on <code>yield</code> and <code>return</code>
+statements.</li>
+</ul>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Before</span>
+<span class="hljs-keyword">const</span> variables = {};
+<span class="hljs-keyword">const</span> generatorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  variables[<span class="hljs-string">'res'</span>] = <span class="hljs-keyword">yield</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+  <span class="hljs-keyword">return</span> variables[<span class="hljs-string">'res'</span>].text;
+};
+</code></pre>
+<pre><code class="lang-javascript"><span class="hljs-comment">// After</span>
+<span class="hljs-keyword">const</span> generatorFunction = GeneratorFunction(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">v, step</span>) </span>{
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) {
+    <span class="hljs-keyword">return</span> generatorResult(
+      superagent.get(<span class="hljs-string">'http://www.google.com'</span>), <span class="hljs-literal">false</span>);
+  }
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">1</span>) {
+    <span class="hljs-comment">// Note that we need to assign to the value passed to `next()`</span>
+    variables[<span class="hljs-string">'res'</span>] = v;
+    <span class="hljs-keyword">return</span> generatorResult(variables[<span class="hljs-string">'res'</span>], <span class="hljs-literal">true</span>);
+  }
+});
+</code></pre>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> esprima = <span class="hljs-built_in">require</span>(<span class="hljs-string">'esprima'</span>);
 <span class="hljs-keyword">const</span> estraverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">'estraverse'</span>);
 <span class="hljs-keyword">const</span> escodegen = <span class="hljs-built_in">require</span>(<span class="hljs-string">'escodegen'</span>);
-
+<span class="hljs-keyword">const</span> clone = (v) =&gt; <span class="hljs-built_in">JSON</span>.parse(<span class="hljs-built_in">JSON</span>.stringify(v));
 <span class="hljs-keyword">const</span> parsed = esprima.parse(<span class="hljs-string">`
   const generatorFunction = function*() {
-    yield 'Hello, World';
+    res = yield 'Hello, World';
+    return 'test';
   };`</span>);
-
+<span class="hljs-built_in">console</span>.log(<span class="hljs-built_in">JSON</span>.stringify(parsed, <span class="hljs-literal">null</span>, <span class="hljs-string">'  '</span>));
+<span class="hljs-keyword">let</span> steps = [];
+<span class="hljs-keyword">let</span> generatorStack = [];
 estraverse.replace(parsed, {
   enter: (node, parent) =&gt; {
     <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node.generator) {
@@ -2166,7 +2269,10 @@ estraverse.replace(parsed, {
         type: <span class="hljs-string">'Identifier'</span>,
         name: <span class="hljs-string">'step'</span>
       });
-      node._numYields = <span class="hljs-number">0</span>;
+      node._steps = [
+        []
+      ];
+      generatorStack.push(node);
 
       <span class="hljs-keyword">return</span> {
         type: <span class="hljs-string">'CallExpression'</span>,
@@ -2176,9 +2282,87 @@ estraverse.replace(parsed, {
         },
         <span class="hljs-built_in">arguments</span>: [node]
       }
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (generatorStack.length &amp;&amp; generatorStack[generatorStack.length - <span class="hljs-number">1</span>].body === parent) {
+      <span class="hljs-keyword">const</span> generator = generatorStack[generatorStack.length - <span class="hljs-number">1</span>];
+      generator._steps[generator._steps.length - <span class="hljs-number">1</span>].push(node);
     }
   },
-  leave: (node, parent) =&gt; {}
+  leave: (node, parent) =&gt; {
+    <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node._steps) {
+      <span class="hljs-keyword">var</span> newBody = [];
+      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; node._steps.length; ++i) {
+        newBody.push({
+          type: <span class="hljs-string">'IfStatement'</span>,
+          test: {
+            type: <span class="hljs-string">'BinaryExpression'</span>,
+            operator: <span class="hljs-string">'==='</span>,
+            left: {
+              type: <span class="hljs-string">'Identifier'</span>,
+              name: <span class="hljs-string">'step'</span>
+            },
+            right: {
+              type: <span class="hljs-string">'Literal'</span>,
+              value: i,
+              raw: i.toString()
+            }
+          },
+          consequent: {
+            type: <span class="hljs-string">'BlockStatement'</span>,
+            body: clone(node._steps[i])
+          }
+        });
+      }
+      node.body.body = newBody;
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'YieldExpression'</span> || node.type === <span class="hljs-string">'ReturnStatement'</span>) {
+      <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'ReturnStatement'</span>) {
+        node.argument = {
+          type: <span class="hljs-string">'CallExpression'</span>,
+          callee: {
+            type: <span class="hljs-string">'Identifier'</span>,
+            name: <span class="hljs-string">'generatorResult'</span>
+          },
+          <span class="hljs-built_in">arguments</span>: [
+            node.argument, {
+              type: <span class="hljs-string">'Literal'</span>,
+              value: <span class="hljs-literal">true</span>,
+              raw: <span class="hljs-string">'true'</span>
+            }
+          ]
+        };
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'YieldExpression'</span>) {
+        node.type = <span class="hljs-string">'ReturnStatement'</span>;
+        node._wasYield = <span class="hljs-literal">true</span>;
+        node.argument = {
+          type: <span class="hljs-string">'CallExpression'</span>,
+          callee: {
+            type: <span class="hljs-string">'Identifier'</span>,
+            name: <span class="hljs-string">'generatorResult'</span>
+          },
+          <span class="hljs-built_in">arguments</span>: [
+            node.argument, {
+              type: <span class="hljs-string">'Literal'</span>,
+              value: <span class="hljs-literal">false</span>,
+              raw: <span class="hljs-string">'false'</span>
+            }
+          ]
+        };
+      }
+
+      generatorStack[generatorStack.length - <span class="hljs-number">1</span>]._steps.push([]);
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'ExpressionStatement'</span> &amp;&amp; node.expression.type === <span class="hljs-string">'AssignmentExpression'</span>) {
+      <span class="hljs-keyword">if</span> (node.expression.right._wasYield) {
+        <span class="hljs-keyword">const</span> newNode = clone(node);
+        newNode.expression.right = {
+          type: <span class="hljs-string">'Identifier'</span>,
+          name: <span class="hljs-string">'v'</span>
+        };
+        <span class="hljs-keyword">const</span> generator = generatorStack[generatorStack.length - <span class="hljs-number">1</span>];
+        generator._steps[generator._steps.length - <span class="hljs-number">1</span>].push(newNode);
+        node.type = <span class="hljs-string">'ReturnStatement'</span>;
+        node.argument = node.expression.right.argument;
+      }
+    }
+  }
 });
 
 <span class="hljs-built_in">console</span>.log(escodegen.generate(parsed));

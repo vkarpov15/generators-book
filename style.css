@@ -12,7 +12,7 @@ h2 {
   padding-top: 75px;
 }
 
-h2#write-your-own-co, h2#real-implementation-of-co {
+h2#write-your-own-co, h2#real-implementation-of-co, h2#write-your-own-transpiler {
   page-break-before: always;
 }
 
@@ -20,7 +20,7 @@ h2#write-your-own-co, h2#real-implementation-of-co {
   page-break-before: always;
 }
 
-h1,h2,h3,h4,p,ul,ol,pre {
+h1,h2,h3,h4,p,ul,ol,:not(li) > pre {
   margin-left: 50px;
   margin-right: 50px;
 }
@@ -40,10 +40,6 @@ p, li {
 
 p code {
   color: #232323;
-}
-
-li {
-  margin-left: 50px;
 }
 
 a {

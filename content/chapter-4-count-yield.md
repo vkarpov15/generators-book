@@ -24,11 +24,11 @@ const generatorFunction = function*() {
 };
 ```
 
+<br>
+
 The correct output is `[2, 1]` because the first generator function has 2
 yield statements. However, estraverse will visit the 2nd yield statement
 after the 2nd generator function.
-
-<br>
 
 To properly handle the case where you `yield` a generator and then `yield`
 another value, you're going to use a stack and the estraverse `leave()`

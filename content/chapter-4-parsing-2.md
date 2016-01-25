@@ -1,7 +1,7 @@
+<br>
+
 Syntax trees can be confusing at first, but the key idea in this example is
 what generator functions look like in the syntax tree.
-
-<br><br>
 
 Let's take a look at a simple problem: count the number of generator functions
 in a piece of code. You'd need to visit each node in the
