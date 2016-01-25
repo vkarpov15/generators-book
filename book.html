@@ -47,7 +47,7 @@ p code {
   color: #232323;
 }
 
-a {
+h1 a, h2 a, h3 a, li a {
   color: black;
   float: right;
   text-decoration: none;
@@ -246,36 +246,36 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 </div>
 
       <h1 id="table-of-contents">Table of Contents</h1>
-<h3 id="how-to-use-this-book-1-1-">How To Use This Book <a href="#1">1</a></h3>
-<h3 id="1-getting-started-with-generators-2-2-">1. Getting Started With Generators <a href="#2">2</a></h3>
+<h3 id="0-how-to-use-this-book-1-1-">0. How To Use This Book <a href="#1">1</a></h3>
+<h3 id="1-getting-started-with-generators-3-3-">1. Getting Started With Generators <a href="#3">3</a></h3>
 <ol>
-<li>What is a Generator? <a href="#2">2</a></li>
-<li>Case Study: Async Fibonacci <a href="#4">4</a></li>
-<li>For/Of Loops <a href="#6">6</a></li>
-<li>Error Handling <a href="#8">8</a></li>
-<li>Case Study: Handling Async Errors <a href="#9">9</a></li>
+<li>What is a Generator? <a href="#3">3</a></li>
+<li>Case Study: Async Fibonacci <a href="#5">5</a></li>
+<li>For/Of Loops <a href="#7">7</a></li>
+<li>Error Handling <a href="#9">9</a></li>
+<li>Case Study: Handling Async Errors <a href="#10">10</a></li>
 </ol>
-<h3 id="2-asynchronous-coroutines-11-11-">2. Asynchronous Coroutines <a href="#11">11</a></h3>
+<h3 id="2-asynchronous-coroutines-12-12-">2. Asynchronous Coroutines <a href="#12">12</a></h3>
 <ol>
-<li>Promises and Thunks <a href="#11">11</a></li>
-<li>Write Your Own Co <a href="#17">17</a></li>
-<li>Limitations <a href="#19">19</a></li>
-<li>Real Implementation of Co <a href="#21">21</a></li>
+<li>Promises and Thunks <a href="#12">12</a></li>
+<li>Write Your Own Co <a href="#18">18</a></li>
+<li>Limitations <a href="#20">20</a></li>
+<li>Real Implementation of Co <a href="#22">22</a></li>
 </ol>
-<h3 id="3-koa-and-middleware-26-26-">3. Koa and Middleware <a href="#26">26</a></h3>
+<h3 id="3-koa-and-middleware-27-27-">3. Koa and Middleware <a href="#27">27</a></h3>
 <ol>
-<li>The koa-compose Module <a href="#27">27</a></li>
-<li>The Koa Web Framework <a href="#29">29</a></li>
-<li>Limitations of koa-compose and Koa <a href="#32">32</a></li>
+<li>The koa-compose Module <a href="#28">28</a></li>
+<li>The Koa Web Framework <a href="#30">30</a></li>
+<li>Limitations of koa-compose and Koa <a href="#33">33</a></li>
 </ol>
-<h3 id="4-transpiling-34-34-">4. Transpiling <a href="#34">34</a></h3>
+<h3 id="4-transpiling-35-35-">4. Transpiling <a href="#35">35</a></h3>
 <ol>
-<li>Introducing Regenerator <a href="#34">34</a></li>
-<li>Faking a Generator Function <a href="#36">36</a></li>
-<li>Parsing Generators With Esprima <a href="#41">41</a></li>
-<li>Write Your Own Transpiler <a href="#44">44</a></li>
+<li>Introducing Regenerator <a href="#35">35</a></li>
+<li>Faking a Generator Function <a href="#37">37</a></li>
+<li>Parsing Generators With Esprima <a href="#42">42</a></li>
+<li>Write Your Own Transpiler <a href="#45">45</a></li>
 </ol>
-<h3 id="5-moving-on">5. Moving On</h3>
+<h3 id="5-moving-on-50-50-">5. Moving On <a href="#50">50</a></h3>
 
       <h1 id="how-to-use-this-book">How To Use This Book</h1>
 <p>This is not just another tech book that sits up on your bookshelf gathering
@@ -283,7 +283,7 @@ dust. I think of this ebook as something halfway between a blog post and
 a full book: focused and concise like a blog post, in-depth and rigorous like
 a pure math textbook. The purpose of this ebook is to take you from a generators
 novice to someone who would be comfortable discussing co internals in 1 to 2
-hours. This ebook is meant to be read in 1-2 sessions (its only 40 pages!),
+hours. This ebook is meant to be read in 1-2 sessions (its only 50 pages!),
 although you may also choose to read one chapter at a time.</p>
 <p>What is this ebook focused on?</p>
 <ul>
@@ -312,6 +312,49 @@ co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span
 <li>Composing asynchronous coroutines. You&#39;ll learn about the generator-based
 server-side web framework koa, and write your own minimal koa implementation.</li>
 </ul>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> koa = <span class="hljs-built_in">require</span>(<span class="hljs-string">'koa'</span>);
+<span class="hljs-keyword">const</span> app = koa();
+app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  <span class="hljs-keyword">const</span> start = <span class="hljs-built_in">Date</span>.now();
+  <span class="hljs-keyword">yield</span> next;
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-built_in">Date</span>.now() - start); <span class="hljs-comment">// Will print approximately 1000</span>
+});
+app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params">next</span>) </span>{
+  setTimeout(() =&gt; { <span class="hljs-keyword">yield</span> next; }, <span class="hljs-number">1000</span>);
+});
+app.listen(<span class="hljs-number">3000</span>);
+</code></pre>
+<p><br><br><br></p>
+<ul>
+<li>Transpiling generator functions into plain-old functions for ES5 environments.
+You&#39;ll learn about the open-source transpiler regenerator, and write a
+rudimentary transpiler using the open-source JavaScript parser esprima.</li>
+</ul>
+<p>This book strives to minimize external dependencies. However, in the
+interest of providing realistic examples and minimizing tangential work, this
+book utilizes a handful of npm modules.</p>
+<ul>
+<li>co 4.6.0</li>
+<li>escodegen 1.8.0</li>
+<li>esprima 2.7.1</li>
+<li>estraverse 4.1.1</li>
+<li>koa 1.1.2</li>
+<li>koa-compose 2.3.0</li>
+<li>regenerator 0.8.42</li>
+<li>superagent 1.6.1</li>
+<li>thunkify 2.1.2</li>
+</ul>
+<p>All this book&#39;s code examples are generated from a mocha test suite using
+the acquit npm module. The tests are run using Node.js 5.4.1. However, if you
+find any issues, please report them
+on <br>
+<a href="https://github.com/vkarpov15/generators-book-issues">github.com/vkarpov15/generators-book-issues</a>.</p>
+<p>For the most part, the code samples in this book can be run as-is in Node.js
+with a little massaging. However, for cases when you may struggle with running
+the code samples, the raw mocha test cases that generate the
+code examples for chapters 1-4 are packaged with this book as
+<code>chapterX.test.js</code>.</p>
+<p>Are you ready to become a master of ES2015 generators? Let&#39;s get started!</p>
 
       <h1 id="chapter-1-getting-started">Chapter 1: Getting Started</h1>
 <p>Generators are a powerful new feature in ES2015. Generators are far from a
@@ -2414,7 +2457,6 @@ estraverse.replace(parsed, {
   }
 });
 </code></pre>
-<h2 id="step5">step5</h2>
 <p><br></p>
 <p>And that&#39;s it! Now you have a fully transpiled fake generator function. If you
 pass <code>generatorFunction()</code> into co, it will work as expected.</p>
@@ -2465,11 +2507,36 @@ co(GeneratorFunction(<span class="hljs-function"><span class="hljs-keyword">func
 });
 </code></pre>
 
+      <h1 id="chapter-5-moving-on">Chapter 5: Moving On</h1>
+<p>Congratulations! If you&#39;ve gotten this far, you&#39;ve seen the fundamentals of
+generators and how to implement your own take on co, koa, and regenerator.
+Generators are a powerful tool, they enable you to implement scheduling for
+CPU-intensive calculations, callback-free asynchronous code, and highly
+composable web server applications.</p>
+<p>You may have heard of ES2016 and the async/await keywords. The upcoming ES2016
+spec will include out-of-the-box support for the callback-free asynchronous
+code that <code>co()</code> enables.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">googleHomepage</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+}
+<span class="hljs-built_in">console</span>.log((<span class="hljs-keyword">await</span> googleHomepage()).text);
+</code></pre>
+<p>However, ES2016 is not yet finalized. As people who were excited about ES2016&#39;s
+proposed <code>Object.observe()</code> feature learned the hard way, major features are
+often changed significantly or even cut entirely before the spec is finalized.
+Don&#39;t pull all your eggs in the async/await basket until the ES2016 spec is
+formally approved! Even when the spec is approved, most browsers will not
+support async/await, so you will need a transpiler. Not surprisingly, modern
+async/await transpilers use generators and asynchronous coroutines under the
+hood.</p>
+<p>Congratulations again on completing this guide, and good luck with your
+ES2015 coding adventures!</p>
+
     </div>
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 50; ++i) {
+      for (var i = 2; i < 53; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

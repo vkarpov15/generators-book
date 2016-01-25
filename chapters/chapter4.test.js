@@ -626,7 +626,7 @@ const generatorFunction = GeneratorFunction(function (v, step) {
   });
 
   /** @import:content/chapter-4-outro.md */
-  it('step5', done => {
+  it('', done => {
     // acquit:ignore:start
     const co = require('co');
     const superagent = require('superagent');

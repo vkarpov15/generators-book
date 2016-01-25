@@ -42,7 +42,7 @@ p code {
   color: #232323;
 }
 
-a {
+h1 a, h2 a, h3 a, li a {
   color: black;
   float: right;
   text-decoration: none;
