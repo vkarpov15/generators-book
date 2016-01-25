@@ -362,8 +362,10 @@ describe('Chapter 4: Transpiling', () => {
   it('Write Your Own Transpiler', () => {
     const esprima = require('esprima');
     const estraverse = require('estraverse');
+    // escodegen exposes a `generate()` function that takes
+    // an esprima syntax tree and outputs code as a string.
     const escodegen = require('escodegen');
-    const clone = (v) => JSON.parse(JSON.stringify(v));
+
     const parsed = esprima.parse(`
   const variables = [];
   const generatorFunction = function*() {
@@ -371,16 +373,15 @@ describe('Chapter 4: Transpiling', () => {
     return variables['res'];
   };`);
 
-    let steps = [];
-    let generatorStack = [];
     estraverse.replace(parsed, {
       enter: (node, parent) => {
         if (node.type === 'FunctionExpression' && node.generator) {
           node.generator = false;
           node.params.push({ type: 'Identifier', name: 'v' });
           node.params.push({ type: 'Identifier', name: 'step' });
+          // This property will identify this node as a former
+          // generator function
           node._steps = [[]];
-          generatorStack.push(node);
 
           return {
             type: 'CallExpression',
@@ -390,88 +391,237 @@ describe('Chapter 4: Transpiling', () => {
             },
             arguments: [node]
           }
-        } else if (generatorStack.length && generatorStack[generatorStack.length - 1].body === parent) {
-          const generator = generatorStack[generatorStack.length - 1];
-          generator._steps[generator._steps.length - 1].push(node);
-        }
-      },
-      leave: (node, parent) => {
-        if (node.type === 'FunctionExpression' && node._steps) {
-          var newBody = [];
-          for (let i = 0; i < node._steps.length; ++i) {
-            newBody.push({
-              type: 'IfStatement',
-              test: {
-                type: 'BinaryExpression',
-                operator: '===',
-                left: { type: 'Identifier', name: 'step' },
-                right: { type: 'Literal', value: i, raw: i.toString() }
-              },
-              consequent: {
-                type: 'BlockStatement',
-                body: clone(node._steps[i])
-              }
-            });
-          }
-          node.body.body = newBody;
-        } else if (node.type === 'YieldExpression' || node.type === 'ReturnStatement') {
-          if (node.type === 'ReturnStatement') {
-            node.argument = {
-              type: 'CallExpression',
-              callee: {
-                type: 'Identifier',
-                name: 'generatorResult'
-              },
-              arguments: [
-                node.argument,
-                {
-                  type: 'Literal',
-                  value: true,
-                  raw: 'true'
-                }
-              ]
-            };
-          } else if (node.type === 'YieldExpression') {
-            node.type = 'ReturnStatement';
-            node._wasYield = true;
-            node.argument = {
-              type: 'CallExpression',
-              callee: {
-                type: 'Identifier',
-                name: 'generatorResult'
-              },
-              arguments: [
-                node.argument,
-                {
-                  type: 'Literal',
-                  value: false,
-                  raw: 'false'
-                }
-              ]
-            };
-          }
-
-          generatorStack[generatorStack.length - 1]._steps.push([]);
-        } else if (node.type === 'ExpressionStatement' && node.expression.type === 'AssignmentExpression') {
-          if (node.expression.right._wasYield) {
-            const newNode = clone(node);
-            newNode.expression.right = { type: 'Identifier', name: 'v' };
-            const generator = generatorStack[generatorStack.length - 1];
-            generator._steps[generator._steps.length - 1].push(newNode);
-            node.type = 'ReturnStatement';
-            node.argument = node.expression.right.argument;
-          }
         }
       }
     });
+
+    assert.equal(escodegen.generate(parsed), `
+const variables = [];
+const generatorFunction = GeneratorFunction(function (v, step) {
+    variables['res'] = yield superagent.get('http://www.google.com');
+    return variables['res'];
+});`.trim());
+  });
+
+  /** @import:content/chapter-4-transpiler-2.md */
+  it('', () => {
+    // acquit:ignore:start
+    const esprima = require('esprima');
+    const estraverse = require('estraverse');
+    const escodegen = require('escodegen');
+    // acquit:ignore:end
+    const parsed = esprima.parse(`
+  const variables = [];
+  const generatorFunction = function*() {
+    variables['res'] = yield superagent.get('http://www.google.com');
+    return variables['res'];
+  };`);
+    // acquit:ignore:start
+    estraverse.replace(parsed, {
+      enter: (node, parent) => {
+        if (node.type === 'FunctionExpression' && node.generator) {
+          node.generator = false;
+          node.params.push({ type: 'Identifier', name: 'v' });
+          node.params.push({ type: 'Identifier', name: 'step' });
+          node._steps = [[]];
+
+          return {
+            type: 'CallExpression',
+            callee: {
+              type: 'Identifier',
+              name: 'GeneratorFunction'
+            },
+            arguments: [node]
+          }
+        }
+      },
+      leave: (node, parent) => {}
+    });
+    // acquit:ignore:end
+    const FunctionCall = (name, args) => {
+      return {
+        type: 'CallExpression',
+        callee: {
+          type: 'Identifier',
+          name: name
+        },
+        arguments: args
+      };
+    };
+    const Literal = (value) => {
+      return {
+        type: 'Literal',
+        value: value,
+        raw: value.toString()
+      };
+    };
 
     estraverse.replace(parsed, {
       enter: (node, parent) => {},
       leave: (node, parent) => {
-
+        const type = node.type;
+        if (type === 'YieldExpression' || type === 'ReturnStatement') {
+          if (type === 'ReturnStatement') {
+            const args = [node.argument, Literal(true)];
+            node.argument = FunctionCall('generatorResult', args);
+          } else if (type === 'YieldExpression') {
+            node.type = 'ReturnStatement';
+            node._wasYield = true;
+            const args = [node.argument, Literal(false)];
+            node.argument = FunctionCall('generatorResult', args);
+          }
+        }
       }
     });
 
-    console.log(escodegen.generate(parsed));
+    const yieldStatement = `superagent.get('http://www.google.com')`;
+    assert.equal(escodegen.generate(parsed), `
+const variables = [];
+const generatorFunction = GeneratorFunction(function (v, step) {
+    variables['res'] = return generatorResult(${yieldStatement}, false);;
+    return generatorResult(variables['res'], true);
+});`.trim());
+  });
+
+  /** @import:content/chapter-4-transpiler-3.md */
+  it('', () => {
+    // acquit:ignore:start
+    const esprima = require('esprima');
+    const estraverse = require('estraverse');
+    const escodegen = require('escodegen');
+    // acquit:ignore:end
+    const clone = v => JSON.parse(JSON.stringify(v));
+    // acquit:ignore:start
+    const parsed = esprima.parse(`
+  const variables = [];
+  const generatorFunction = function*() {
+    variables['res'] = yield superagent.get('http://www.google.com');
+    return variables['res'];
+  };`);
+    estraverse.replace(parsed, {
+      enter: (node, parent) => {
+        if (node.type === 'FunctionExpression' && node.generator) {
+          node.generator = false;
+          node.params.push({ type: 'Identifier', name: 'v' });
+          node.params.push({ type: 'Identifier', name: 'step' });
+          node._steps = [[]];
+
+          return {
+            type: 'CallExpression',
+            callee: {
+              type: 'Identifier',
+              name: 'GeneratorFunction'
+            },
+            arguments: [node]
+          }
+        }
+      },
+      leave: (node, parent) => {}
+    });
+    const FunctionCall = (name, args) => {
+      return {
+        type: 'CallExpression',
+        callee: {
+          type: 'Identifier',
+          name: name
+        },
+        arguments: args
+      };
+    };
+    const Literal = (value) => {
+      return {
+        type: 'Literal',
+        value: value,
+        raw: value.toString()
+      };
+    };
+
+    estraverse.replace(parsed, {
+      enter: (node, parent) => {},
+      leave: (node, parent) => {
+        if (node.type === 'YieldExpression' ||
+            node.type === 'ReturnStatement') {
+          if (node.type === 'ReturnStatement') {
+            node.argument = FunctionCall('generatorResult', [
+              node.argument,
+              {
+                type: 'Literal',
+                value: true,
+                raw: 'true'
+              }
+            ]);
+          } else if (node.type === 'YieldExpression') {
+            node.type = 'ReturnStatement';
+            node._wasYield = true;
+            node.argument = FunctionCall('generatorResult', [
+              node.argument,
+              {
+                type: 'Literal',
+                value: false,
+                raw: 'false'
+              }
+            ]);
+          }
+        }
+      }
+    });
+    // acquit:ignore:end
+    const Identifier = name => ({ type: 'Identifier', name: name });
+    const BlockStatement = body => ({ type: 'BlockStatement', body: body });
+    const ReturnStatement = v => ({ type: 'ReturnStatement', argument: v });
+    const If = (t, c) => ({ type: 'IfStatement', test: t, consequent: c });
+    const Test = (l, r) => ({ type: 'BinaryExpression', operator: '===',
+      left: l, right: r });
+    let stack = [];
+    let lastGen = () => stack.length && stack[stack.length - 1];
+    estraverse.replace(parsed, {
+      enter: (node, parent) => {
+        // Keep track of nested generator functions
+        if (node._steps) stack.push(node);
+        // Put top-level expressions into the `_steps` array
+        else if (lastGen() && lastGen().body === parent)
+          lastGen()._steps[lastGen()._steps.length - 1].push(node);
+      },
+      leave: (node, parent) => {
+        if (node.type === 'ExpressionStatement' &&
+            node.expression.type === 'AssignmentExpression' &&
+            node.expression.right._wasYield) {
+          // Handle assigning to result of `yield`
+          const newNode = clone(node);
+          newNode.expression.right = Identifier('v');
+          lastGen()._steps[lastGen()._steps.length - 1].push(newNode);
+          node.type = 'ReturnStatement';
+          node.argument = node.expression.right.argument;
+        } else if (node.type === 'FunctionExpression' && node._steps) {
+          // Merge all of the steps into if statements
+          const newBody = [];
+          for (let i = 0; i < node._steps.length - 1; ++i) {
+            // Wrap each step in an if statement
+            const test = Test(Identifier('step'), Literal(i));
+            newBody.push(If(test, BlockStatement(clone(node._steps[i]))));
+          }
+          const r = [Identifier(undefined), Literal(true)];
+          newBody.push(ReturnStatement(FunctionCall('generatorResult', r)));
+          node.body.body = newBody;
+        } else if (node.type === 'ReturnStatement') {
+          // If there's a return, create a new step
+          lastGen()._steps.push([]);
+        } else if (node._steps) stack.pop();
+      }
+    });
+// acquit:ignore:start
+    assert.equal(escodegen.generate(parsed), `
+const variables = [];
+const generatorFunction = GeneratorFunction(function (v, step) {
+    if (step === 0) {
+        return generatorResult(superagent.get('http://www.google.com'), false);
+    }
+    if (step === 1) {
+        variables['res'] = v;
+        return generatorResult(variables['res'], true);
+    }
+    return generatorResult(undefined, true);
+});`.trim());
+// acquit:ignore:end
   });
 });

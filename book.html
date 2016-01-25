@@ -273,7 +273,7 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
 <li>Introducing Regenerator <a href="#34">34</a></li>
 <li>Faking a Generator Function <a href="#36">36</a></li>
 <li>Parsing Generators With Esprima <a href="#41">41</a></li>
-<li>Write Your Own Transpiler</li>
+<li>Write Your Own Transpiler <a href="#44">44</a></li>
 </ol>
 <h3 id="5-moving-on">5. Moving On</h3>
 
@@ -1298,9 +1298,9 @@ execute in parallel.</p>
 fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
   <span class="hljs-comment">// Parallel HTTP requests!</span>
   <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> [
-    superagent.get(<span class="hljs-string">'http://www.google.com'</span>),
-    superagent.get(<span class="hljs-string">'http://www.amazon.com'</span>)
-  ];
+        superagent.get(<span class="hljs-string">'http://www.google.com'</span>),
+        superagent.get(<span class="hljs-string">'http://www.amazon.com'</span>)
+      ];
 });
 </code></pre>
 <p>Congratulations, you&#39;ve successfully implemented your own co knockoff!
@@ -2245,18 +2245,26 @@ statements.</li>
   }
 });
 </code></pre>
+<p><br></p>
+<p>You&#39;re going to implement all these steps separately, because one block of
+code that does all of these steps at once is too complex. The first step,
+converting <code>function*</code> into a call to <code>GeneratorFunction()</code>, is the most
+straightforward. You need to take each &#39;FunctionExpression&#39; node that has a
+<code>generator</code> flag set and convert it into a non-generator within a
+&#39;CallExpression&#39; node as shown below.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> esprima = <span class="hljs-built_in">require</span>(<span class="hljs-string">'esprima'</span>);
 <span class="hljs-keyword">const</span> estraverse = <span class="hljs-built_in">require</span>(<span class="hljs-string">'estraverse'</span>);
+<span class="hljs-comment">// escodegen exposes a `generate()` function that takes</span>
+<span class="hljs-comment">// an esprima syntax tree and outputs code as a string.</span>
 <span class="hljs-keyword">const</span> escodegen = <span class="hljs-built_in">require</span>(<span class="hljs-string">'escodegen'</span>);
-<span class="hljs-keyword">const</span> clone = (v) =&gt; <span class="hljs-built_in">JSON</span>.parse(<span class="hljs-built_in">JSON</span>.stringify(v));
+
 <span class="hljs-keyword">const</span> parsed = esprima.parse(<span class="hljs-string">`
+  const variables = [];
   const generatorFunction = function*() {
-    res = yield 'Hello, World';
-    return 'test';
+    variables['res'] = yield superagent.get('http://www.google.com');
+    return variables['res'];
   };`</span>);
-<span class="hljs-built_in">console</span>.log(<span class="hljs-built_in">JSON</span>.stringify(parsed, <span class="hljs-literal">null</span>, <span class="hljs-string">'  '</span>));
-<span class="hljs-keyword">let</span> steps = [];
-<span class="hljs-keyword">let</span> generatorStack = [];
+
 estraverse.replace(parsed, {
   enter: (node, parent) =&gt; {
     <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node.generator) {
@@ -2269,10 +2277,9 @@ estraverse.replace(parsed, {
         type: <span class="hljs-string">'Identifier'</span>,
         name: <span class="hljs-string">'step'</span>
       });
-      node._steps = [
-        []
-      ];
-      generatorStack.push(node);
+      <span class="hljs-comment">// This property will identify this node as a former</span>
+      <span class="hljs-comment">// generator function</span>
+      node._steps = [[]];
 
       <span class="hljs-keyword">return</span> {
         type: <span class="hljs-string">'CallExpression'</span>,
@@ -2282,97 +2289,137 @@ estraverse.replace(parsed, {
         },
         <span class="hljs-built_in">arguments</span>: [node]
       }
-    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (generatorStack.length &amp;&amp; generatorStack[generatorStack.length - <span class="hljs-number">1</span>].body === parent) {
-      <span class="hljs-keyword">const</span> generator = generatorStack[generatorStack.length - <span class="hljs-number">1</span>];
-      generator._steps[generator._steps.length - <span class="hljs-number">1</span>].push(node);
     }
-  },
+  }
+});
+
+assert.equal(escodegen.generate(parsed), <span class="hljs-string">`
+const variables = [];
+const generatorFunction = GeneratorFunction(function (v, step) {
+    variables['res'] = yield superagent.get('http://www.google.com');
+    return variables['res'];
+});`</span>.trim());
+</code></pre>
+<p><br><br></p>
+<p>The second step for the transpiler is to convert <code>yield</code> and <code>return</code> statements
+to <code>return</code> statements that use the <code>generatorResult()</code> function. This ensures
+the resulting generator&#39;s <code>next()</code> returns properly formated results. To do
+this, every &#39;YieldExpression&#39; and &#39;ReturnStatement&#39; node needs to be
+transformed to a &#39;ReturnStatement&#39; that returns a call to <code>generatorResult()</code>,
+as shown below.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> parsed = esprima.parse(<span class="hljs-string">`
+  const variables = [];
+  const generatorFunction = function*() {
+    variables['res'] = yield superagent.get('http://www.google.com');
+    return variables['res'];
+  };`</span>);
+<span class="hljs-keyword">const</span> FunctionCall = (name, args) =&gt; {
+  <span class="hljs-keyword">return</span> {
+    type: <span class="hljs-string">'CallExpression'</span>,
+    callee: {
+      type: <span class="hljs-string">'Identifier'</span>,
+      name: name
+    },
+    <span class="hljs-built_in">arguments</span>: args
+  };
+};
+<span class="hljs-keyword">const</span> Literal = (value) =&gt; {
+  <span class="hljs-keyword">return</span> {
+    type: <span class="hljs-string">'Literal'</span>,
+    value: value,
+    raw: value.toString()
+  };
+};
+
+estraverse.replace(parsed, {
+  enter: (node, parent) =&gt; {},
   leave: (node, parent) =&gt; {
-    <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node._steps) {
-      <span class="hljs-keyword">var</span> newBody = [];
-      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; node._steps.length; ++i) {
-        newBody.push({
-          type: <span class="hljs-string">'IfStatement'</span>,
-          test: {
-            type: <span class="hljs-string">'BinaryExpression'</span>,
-            operator: <span class="hljs-string">'==='</span>,
-            left: {
-              type: <span class="hljs-string">'Identifier'</span>,
-              name: <span class="hljs-string">'step'</span>
-            },
-            right: {
-              type: <span class="hljs-string">'Literal'</span>,
-              value: i,
-              raw: i.toString()
-            }
-          },
-          consequent: {
-            type: <span class="hljs-string">'BlockStatement'</span>,
-            body: clone(node._steps[i])
-          }
-        });
-      }
-      node.body.body = newBody;
-    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'YieldExpression'</span> || node.type === <span class="hljs-string">'ReturnStatement'</span>) {
-      <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'ReturnStatement'</span>) {
-        node.argument = {
-          type: <span class="hljs-string">'CallExpression'</span>,
-          callee: {
-            type: <span class="hljs-string">'Identifier'</span>,
-            name: <span class="hljs-string">'generatorResult'</span>
-          },
-          <span class="hljs-built_in">arguments</span>: [
-            node.argument, {
-              type: <span class="hljs-string">'Literal'</span>,
-              value: <span class="hljs-literal">true</span>,
-              raw: <span class="hljs-string">'true'</span>
-            }
-          ]
-        };
-      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'YieldExpression'</span>) {
+    <span class="hljs-keyword">const</span> type = node.type;
+    <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'YieldExpression'</span> || type === <span class="hljs-string">'ReturnStatement'</span>) {
+      <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'ReturnStatement'</span>) {
+        <span class="hljs-keyword">const</span> args = [node.argument, Literal(<span class="hljs-literal">true</span>)];
+        node.argument = FunctionCall(<span class="hljs-string">'generatorResult'</span>, args);
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (type === <span class="hljs-string">'YieldExpression'</span>) {
         node.type = <span class="hljs-string">'ReturnStatement'</span>;
         node._wasYield = <span class="hljs-literal">true</span>;
-        node.argument = {
-          type: <span class="hljs-string">'CallExpression'</span>,
-          callee: {
-            type: <span class="hljs-string">'Identifier'</span>,
-            name: <span class="hljs-string">'generatorResult'</span>
-          },
-          <span class="hljs-built_in">arguments</span>: [
-            node.argument, {
-              type: <span class="hljs-string">'Literal'</span>,
-              value: <span class="hljs-literal">false</span>,
-              raw: <span class="hljs-string">'false'</span>
-            }
-          ]
-        };
-      }
-
-      generatorStack[generatorStack.length - <span class="hljs-number">1</span>]._steps.push([]);
-    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'ExpressionStatement'</span> &amp;&amp; node.expression.type === <span class="hljs-string">'AssignmentExpression'</span>) {
-      <span class="hljs-keyword">if</span> (node.expression.right._wasYield) {
-        <span class="hljs-keyword">const</span> newNode = clone(node);
-        newNode.expression.right = {
-          type: <span class="hljs-string">'Identifier'</span>,
-          name: <span class="hljs-string">'v'</span>
-        };
-        <span class="hljs-keyword">const</span> generator = generatorStack[generatorStack.length - <span class="hljs-number">1</span>];
-        generator._steps[generator._steps.length - <span class="hljs-number">1</span>].push(newNode);
-        node.type = <span class="hljs-string">'ReturnStatement'</span>;
-        node.argument = node.expression.right.argument;
+        <span class="hljs-keyword">const</span> args = [node.argument, Literal(<span class="hljs-literal">false</span>)];
+        node.argument = FunctionCall(<span class="hljs-string">'generatorResult'</span>, args);
       }
     }
   }
 });
 
-<span class="hljs-built_in">console</span>.log(escodegen.generate(parsed));
+<span class="hljs-keyword">const</span> yieldStatement = <span class="hljs-string">`superagent.get('http://www.google.com')`</span>;
+assert.equal(escodegen.generate(parsed), <span class="hljs-string">`
+const variables = [];
+const generatorFunction = GeneratorFunction(function (v, step) {
+    variables['res'] = return generatorResult(<span class="hljs-subst">${yieldStatement}</span>, false);;
+    return generatorResult(variables['res'], true);
+});`</span>.trim());
+</code></pre>
+<p><br></p>
+<p>The third and final step is the most complex. This step has 2 primary
+objectives. First, you need to break up the code into steps: all the code
+between <code>return</code> statements needs to be wrapped in an <code>if</code> statement that
+checks the current <code>step</code>. To do this, you&#39;ll add a 2d array <code>_steps</code> to every
+generator function node. You&#39;ll add each top-level expression to the last
+element of the <code>_steps</code> array, and add a new empty array to the <code>_steps</code> array
+every time you see a return statement.</p>
+<p>Secondly, you need to transform any assignments that have a <code>yield</code> statement
+as the right-hand side. To do this, you&#39;ll add a new &#39;AssignmentExpression&#39; to
+the start of the next step that assigns to the parameter <code>v</code>, which is the
+value passed to <code>generator.next()</code>.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> clone = v =&gt; <span class="hljs-built_in">JSON</span>.parse(<span class="hljs-built_in">JSON</span>.stringify(v));
+<span class="hljs-keyword">const</span> Identifier = name =&gt; ({ type: <span class="hljs-string">'Identifier'</span>, name: name });
+<span class="hljs-keyword">const</span> BlockStatement = body =&gt; ({ type: <span class="hljs-string">'BlockStatement'</span>, body: body });
+<span class="hljs-keyword">const</span> ReturnStatement = v =&gt; ({ type: <span class="hljs-string">'ReturnStatement'</span>, argument: v });
+<span class="hljs-keyword">const</span> If = (t, c) =&gt; ({ type: <span class="hljs-string">'IfStatement'</span>, test: t, consequent: c });
+<span class="hljs-keyword">const</span> Test = (l, r) =&gt; ({ type: <span class="hljs-string">'BinaryExpression'</span>, operator: <span class="hljs-string">'==='</span>,
+  left: l, right: r });
+<span class="hljs-keyword">let</span> stack = [];
+<span class="hljs-keyword">let</span> lastGen = () =&gt; stack.length &amp;&amp; stack[stack.length - <span class="hljs-number">1</span>];
+estraverse.replace(parsed, {
+  enter: (node, parent) =&gt; {
+    <span class="hljs-comment">// Keep track of nested generator functions</span>
+    <span class="hljs-keyword">if</span> (node._steps) stack.push(node);
+    <span class="hljs-comment">// Put top-level expressions into the `_steps` array</span>
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (lastGen() &amp;&amp; lastGen().body === parent)
+      lastGen()._steps[lastGen()._steps.length - <span class="hljs-number">1</span>].push(node);
+  },
+  leave: (node, parent) =&gt; {
+    <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'ExpressionStatement'</span> &amp;&amp;
+        node.expression.type === <span class="hljs-string">'AssignmentExpression'</span> &amp;&amp;
+        node.expression.right._wasYield) {
+      <span class="hljs-comment">// Handle assigning to result of `yield`</span>
+      <span class="hljs-keyword">const</span> newNode = clone(node);
+      newNode.expression.right = Identifier(<span class="hljs-string">'v'</span>);
+      lastGen()._steps[lastGen()._steps.length - <span class="hljs-number">1</span>].push(newNode);
+      node.type = <span class="hljs-string">'ReturnStatement'</span>;
+      node.argument = node.expression.right.argument;
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'FunctionExpression'</span> &amp;&amp; node._steps) {
+      <span class="hljs-comment">// Merge all of the steps into if statements</span>
+      <span class="hljs-keyword">const</span> newBody = [];
+      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; node._steps.length - <span class="hljs-number">1</span>; ++i) {
+        <span class="hljs-comment">// Wrap each step in an if statement</span>
+        <span class="hljs-keyword">const</span> test = Test(Identifier(<span class="hljs-string">'step'</span>), Literal(i));
+        newBody.push(If(test, BlockStatement(clone(node._steps[i]))));
+      }
+      <span class="hljs-keyword">const</span> r = [Identifier(<span class="hljs-literal">undefined</span>), Literal(<span class="hljs-literal">true</span>)];
+      newBody.push(ReturnStatement(FunctionCall(<span class="hljs-string">'generatorResult'</span>, r)));
+      node.body.body = newBody;
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.type === <span class="hljs-string">'ReturnStatement'</span>) {
+      <span class="hljs-comment">// If there's a return, create a new step</span>
+      lastGen()._steps.push([]);
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node._steps) stack.pop();
+  }
+});
 </code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 45; ++i) {
+      for (var i = 2; i < 49; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

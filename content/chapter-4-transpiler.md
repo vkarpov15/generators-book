@@ -59,3 +59,12 @@ const generatorFunction = GeneratorFunction(function(v, step) {
   }
 });
 ```
+
+<br>
+
+You're going to implement all these steps separately, because one block of
+code that does all of these steps at once is too complex. The first step,
+converting `function*` into a call to `GeneratorFunction()`, is the most
+straightforward. You need to take each 'FunctionExpression' node that has a
+`generator` flag set and convert it into a non-generator within a
+'CallExpression' node as shown below.
