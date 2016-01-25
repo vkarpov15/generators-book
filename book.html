@@ -2414,12 +2414,62 @@ estraverse.replace(parsed, {
   }
 });
 </code></pre>
+<h2 id="step5">step5</h2>
+<p><br></p>
+<p>And that&#39;s it! Now you have a fully transpiled fake generator function. If you
+pass <code>generatorFunction()</code> into co, it will work as expected.</p>
+<pre><code class="lang-javascript"><span class="hljs-keyword">const</span> variables = [];
+<span class="hljs-keyword">const</span> generatorFunction = GeneratorFunction(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">v, step</span>) </span>{
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) {
+    <span class="hljs-keyword">return</span> generatorResult(superagent.get(<span class="hljs-string">'http://www.google.com'</span>),
+      <span class="hljs-literal">false</span>);
+  }
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">1</span>) {
+    variables[<span class="hljs-string">'res'</span>] = v;
+    <span class="hljs-keyword">return</span> generatorResult(variables[<span class="hljs-string">'res'</span>], <span class="hljs-literal">true</span>);
+  }
+  <span class="hljs-keyword">return</span> generatorResult(<span class="hljs-literal">undefined</span>, <span class="hljs-literal">true</span>);
+});
+</code></pre>
+<p>This transpiler has numerous limitations: it doesn&#39;t support try/catch blocks,
+variable declarations, if statements, or for loops. That&#39;s why you should
+use regenerator instead of writing your own: writing a fully-fledged transpiler
+for generators is very hard! However, in writing your own
+transpiler, you got to actually apply the ES2015 spec&#39;s definition of generators
+and see how they work in terms of plain-old functions.</p>
+<pre><code class="lang-javascript"><span class="hljs-comment">// Generator Runtime API</span>
+<span class="hljs-keyword">const</span> generatorResult = (v, done) =&gt; ({ value: v, done: done });
+<span class="hljs-keyword">const</span> GeneratorFunction = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">fn</span>) </span>{
+  <span class="hljs-keyword">let</span> res = () =&gt; {
+    <span class="hljs-keyword">let</span> step = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">return</span> { next: (v) =&gt; fn(v, step++), <span class="hljs-keyword">throw</span>: (e) =&gt; { <span class="hljs-keyword">throw</span> e; } };
+  };
+  <span class="hljs-built_in">Object</span>.defineProperty(res.constructor, <span class="hljs-string">'name'</span>,
+    { value: <span class="hljs-string">'GeneratorFunction'</span> });
+  <span class="hljs-keyword">return</span> res;
+};
+
+<span class="hljs-keyword">const</span> variables = [];
+co(GeneratorFunction(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">v, step</span>) </span>{
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">0</span>) {
+    <span class="hljs-keyword">return</span> generatorResult(superagent.get(<span class="hljs-string">'http://www.google.com'</span>),
+      <span class="hljs-literal">false</span>);
+  }
+  <span class="hljs-keyword">if</span> (step === <span class="hljs-number">1</span>) {
+    variables[<span class="hljs-string">'res'</span>] = v;
+    <span class="hljs-keyword">return</span> generatorResult(variables[<span class="hljs-string">'res'</span>], <span class="hljs-literal">true</span>);
+  }
+  <span class="hljs-keyword">return</span> generatorResult(<span class="hljs-literal">undefined</span>, <span class="hljs-literal">true</span>);
+})).then((v) =&gt; {
+  <span class="hljs-comment">// v contains google home page HTML</span>
+});
+</code></pre>
 
     </div>
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 49; ++i) {
+      for (var i = 2; i < 50; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }

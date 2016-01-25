@@ -624,4 +624,41 @@ const generatorFunction = GeneratorFunction(function (v, step) {
 });`.trim());
 // acquit:ignore:end
   });
+
+  /** @import:content/chapter-4-outro.md */
+  it('step5', done => {
+    // acquit:ignore:start
+    const co = require('co');
+    const superagent = require('superagent');
+    // acquit:ignore:end
+    // Generator Runtime API
+    const generatorResult = (v, done) => ({ value: v, done: done });
+    const GeneratorFunction = function(fn) {
+      let res = () => {
+        let step = 0;
+        return { next: (v) => fn(v, step++), throw: (e) => { throw e; } };
+      };
+      Object.defineProperty(res.constructor, 'name',
+        { value: 'GeneratorFunction' });
+      return res;
+    };
+
+    const variables = [];
+    co(GeneratorFunction(function (v, step) {
+      if (step === 0) {
+        return generatorResult(superagent.get('http://www.google.com'),
+          false);
+      }
+      if (step === 1) {
+        variables['res'] = v;
+        return generatorResult(variables['res'], true);
+      }
+      return generatorResult(undefined, true);
+    })).then((v) => {
+      // v contains google home page HTML
+      // acquit:ignore:start
+      done();
+      // acquit:ignore:end
+    });
+  });
 });

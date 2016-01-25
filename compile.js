@@ -15,7 +15,8 @@ require('acquit-ignore')();
 acquit.transform(block => {
   // skip beautify for last transpile example because it does more harm
   // than good
-  if (block.code.indexOf(`Wrap each step in an if statement`) === -1) {
+  if (block.code.indexOf(`Wrap each step in an if statement`) === -1 &&
+      block.code.indexOf(`Generator Runtime API`) === -1) {
     block.code = beautify(block.code, beautifyOpts);
   } else {
     let lines = block.code.split('\n');
@@ -78,7 +79,7 @@ co(function*() {
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 49; ++i) {
+      for (var i = 2; i < 50; ++i) {
         var height = start + (i - 2) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
