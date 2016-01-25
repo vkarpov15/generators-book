@@ -3,6 +3,15 @@ html {
   font-size: 24px;
 }
 
+#dedication {
+  page-break-before: always;
+  padding-top: 250px;
+  width: 50%;
+  margin: auto;
+  font-style: italic;
+  line-height: 1.5em;
+}
+
 h1 {
   padding-top: 100px;
   page-break-before: always;

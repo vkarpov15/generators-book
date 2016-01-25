@@ -8,6 +8,15 @@
   font-size: 24px;
 }
 
+#dedication {
+  page-break-before: always;
+  padding-top: 250px;
+  width: 50%;
+  margin: auto;
+  font-style: italic;
+  line-height: 1.5em;
+}
+
 h1 {
   padding-top: 100px;
   page-break-before: always;
@@ -243,6 +252,10 @@ github.com style (c) Vasily Polovnyov <vast@whiteants.net>
       Valeri Karpov
     </div>
   </div>
+</div>
+
+      <div id="dedication">
+  This book is dedicated to my mother Olga, who taught me to always aim high.
 </div>
 
       <h1 id="table-of-contents">Table of Contents</h1>
@@ -2536,8 +2549,8 @@ ES2015 coding adventures!</p>
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 53; ++i) {
-        var height = start + (i - 2) * delta;
+      for (var i = 2; i < 52; ++i) {
+        var height = start + (i - 1) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
     </script>

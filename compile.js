@@ -37,6 +37,7 @@ marked.setOptions({
 // Build the PDF
 co(function*() {
   const cover = yield thunkify(fs.readFile)('./content/cover.html');
+  const dedication = yield thunkify(fs.readFile)('./content/dedication.html');
   const toc = yield thunkify(fs.readFile)('./content/toc.md');
   const intro = yield thunkify(fs.readFile)('./content/intro.md');
   const chapter1 = yield thunkify(fs.readFile)('./chapters/chapter1.test.js');
@@ -73,6 +74,7 @@ co(function*() {
     </style>
     <div id="content">
       ${cover.toString()}
+      ${dedication.toString()}
       ${marked(toc.toString())}
       ${marked(intro.toString())}
       ${marked(markdown)}
@@ -81,8 +83,8 @@ co(function*() {
     <script type="text/javascript">
       var start = 3400;
       var delta = 1681;
-      for (var i = 2; i < 53; ++i) {
-        var height = start + (i - 2) * delta;
+      for (var i = 2; i < 52; ++i) {
+        var height = start + (i - 1) * delta;
         document.write('<div class="page-num" style="top:' + height + 'px;">' + (i - 1) + '</div>');
       }
     </script>
