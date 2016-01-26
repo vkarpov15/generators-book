@@ -15,7 +15,7 @@ transpilers, modules, build systems, etc. This book is focused solely on
 generators and other features defined in the ES2015 specification. The **only**
 dependency is Node.js >= 4.0.0 and npm.
 In particular, this ebook will **not** use webpack, react, babel, gulp, grunt,
-TypeScript, CoffeeScript, AngularJS, Dart, or any other framework,
+TypeScript, CoffeeScript, AngularJS, Dart, or any other build system,
 preprocessor, or hype train.
 * The co module and asynchronous coroutines. To better understand how generators
 work in an asynchronous language like JavaScript, you'll write your own

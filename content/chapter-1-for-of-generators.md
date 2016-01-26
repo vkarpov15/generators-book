@@ -10,9 +10,8 @@ for (const x of fibonacciGenerator) {} // Error!
 for (const x of fibonacciGenerator(10)) {} // Ok
 ```
 
-You may find it strange that the generator's
-`Symbol.iterator` function returns itself given that generator functions are
-not iterable. One reason for this decision is that a generator function can
+You may find it strange that the generators are iterable but generator
+functions are not. One reason for this decision is that a generator function can
 take parameters. For instance, looping over `fibonacciGenerator(10)` would not
 give the same results as looping over `fibonacciGenerator(11)`.
 

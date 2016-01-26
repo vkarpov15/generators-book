@@ -28,6 +28,7 @@
     "thunkify": "2.1.2"
   },
   "scripts": {
+    "compile-book": "node compile.js && tar -czvf ./bin/80-20-guide-to-es2015-generators.tgz chapters/* bin/80-20-guide-to-es2015-generators.pdf",
     "compile-site": "jade ./server/index.jade --out bin",
     "start": "node ./server/index.js",
     "test": "mocha ./chapters/*.test.js"

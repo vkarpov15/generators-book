@@ -305,7 +305,7 @@ transpilers, modules, build systems, etc. This book is focused solely on
 generators and other features defined in the ES2015 specification. The <strong>only</strong>
 dependency is Node.js &gt;= 4.0.0 and npm.
 In particular, this ebook will <strong>not</strong> use webpack, react, babel, gulp, grunt,
-TypeScript, CoffeeScript, AngularJS, Dart, or any other framework,
+TypeScript, CoffeeScript, AngularJS, Dart, or any other build system,
 preprocessor, or hype train.</li>
 <li>The co module and asynchronous coroutines. To better understand how generators
 work in an asynchronous language like JavaScript, you&#39;ll write your own
@@ -618,9 +618,8 @@ fibonacciGenerator(<span class="hljs-number">10</span>)[<span class="hljs-built_
 <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> fibonacciGenerator) {} <span class="hljs-comment">// Error!</span>
 <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> x <span class="hljs-keyword">of</span> fibonacciGenerator(<span class="hljs-number">10</span>)) {} <span class="hljs-comment">// Ok</span>
 </code></pre>
-<p>You may find it strange that the generator&#39;s
-<code>Symbol.iterator</code> function returns itself given that generator functions are
-not iterable. One reason for this decision is that a generator function can
+<p>You may find it strange that the generators are iterable but generator
+functions are not. One reason for this decision is that a generator function can
 take parameters. For instance, looping over <code>fibonacciGenerator(10)</code> would not
 give the same results as looping over <code>fibonacciGenerator(11)</code>.</p>
 <p>The second most important detail to note about generators and iterables
