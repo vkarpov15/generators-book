@@ -24,9 +24,10 @@ superagent.get('http://google.com', function(error, res) {
 });
 ```
 
-The `async` function is an example of a thunk. A **thunk** is an asynchronous
-function that takes a single parameter, a callback. The `superagent.get()`
-function is _not_ a thunk, because it takes 2 parameters, a url and a callback.
+The `async()` function in the previous example is a thunk. A **thunk** is an
+asynchronous function that takes a single parameter, a callback. The
+`superagent.get()` function is _not_ a thunk, because it takes 2 parameters, a
+url and a callback.
 
 Thunks may seem limited, but with arrow functions you can easily convert
 any asynchronous function call to a thunk.

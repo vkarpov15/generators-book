@@ -15,6 +15,6 @@ asynchronous errors.
 * Helper functions. Helper functions can be generator functions as well, just
 be sure to use yield.
 
-<br><br><br>
+<br><br><br><br>
 
 Below is an example of some of the above points in action.

@@ -1,7 +1,6 @@
 <br><br><br><br>
 
-Why does thunkify lose the function's value of `this`? Because the JavaScript
-language spec treats calling `a.b();` different from `var c = a.b; c();`.
+Why does thunkify lose the function's value of `this`? Because in JavaScript, calling `a.b();` is different from `var c = a.b; c();`.
 When you call a function as a member, like the `a.b();` case, `this` will equal
 `a` in the function call. However, `var c = a.b; c();` does not call a function
 as a member, so `this` refers to the global object in `c`. The latter case

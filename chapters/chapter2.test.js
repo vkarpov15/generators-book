@@ -282,18 +282,17 @@ describe('Chapter 2: Asynchronous Coroutines', () => {
       const url = 'http://doesnot.exist.baddomain';
       const NUM_RETRIES = 3;
       let res;
-      let i;
-      for (i = 0; i < 3; ++i) {
+      for (let i = 0; i < 3; ++i) {
         try {
           // Going to yield 3 times, and `fo()` will call `generator.throw()`
           // 3 times because superagent will fail every time
           res = yield superagent.get(url);
+          break;
         } catch(error) { /* retry */ }
       }
       // res is undefined - retried 3 times with no results
       // acquit:ignore:start
       assert.ok(!res);
-      assert.equal(i, 3);
       done();
       // acquit:ignore:end
     });
@@ -513,11 +512,10 @@ describe('Chapter 2: Asynchronous Coroutines', () => {
     // acquit:ignore:end
     const superagent = require('superagent');
     fo(function*() {
+      const google = superagent.get('http://www.google.com');
+      const amazon = superagent.get('http://www.amazon.com');
       // Parallel HTTP requests!
-      const res = yield [
-        superagent.get('http://www.google.com'),
-        superagent.get('http://www.amazon.com')
-      ];
+      const res = yield [google, amazon];
       // acquit:ignore:start
       assert.ok(res[0]);
       assert.ok(res[1]);

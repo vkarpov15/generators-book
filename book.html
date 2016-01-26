@@ -825,9 +825,10 @@ a parameter as well as a callback:</p>
 <span class="hljs-comment">// Handle error, use res</span>
 });
 </code></pre>
-<p>The <code>async</code> function is an example of a thunk. A <strong>thunk</strong> is an asynchronous
-function that takes a single parameter, a callback. The <code>superagent.get()</code>
-function is <em>not</em> a thunk, because it takes 2 parameters, a url and a callback.</p>
+<p>The <code>async()</code> function in the previous example is a thunk. A <strong>thunk</strong> is an
+asynchronous function that takes a single parameter, a callback. The
+<code>superagent.get()</code> function is <em>not</em> a thunk, because it takes 2 parameters, a
+url and a callback.</p>
 <p>Thunks may seem limited, but with arrow functions you can easily convert
 any asynchronous function call to a thunk.</p>
 <pre><code class="lang-javascript">co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
@@ -908,8 +909,7 @@ co(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span
 });
 </code></pre>
 <p><br><br><br><br></p>
-<p>Why does thunkify lose the function&#39;s value of <code>this</code>? Because the JavaScript
-language spec treats calling <code>a.b();</code> different from <code>var c = a.b; c();</code>.
+<p>Why does thunkify lose the function&#39;s value of <code>this</code>? Because in JavaScript, calling <code>a.b();</code> is different from <code>var c = a.b; c();</code>.
 When you call a function as a member, like the <code>a.b();</code> case, <code>this</code> will equal
 <code>a</code> in the function call. However, <code>var c = a.b; c();</code> does not call a function
 as a member, so <code>this</code> refers to the global object in <code>c</code>. The latter case
@@ -1110,12 +1110,12 @@ is a for loop as shown below.</p>
   <span class="hljs-keyword">const</span> url = <span class="hljs-string">'http://doesnot.exist.baddomain'</span>;
   <span class="hljs-keyword">const</span> NUM_RETRIES = <span class="hljs-number">3</span>;
   <span class="hljs-keyword">let</span> res;
-  <span class="hljs-keyword">let</span> i;
-  <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">3</span>; ++i) {
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">3</span>; ++i) {
     <span class="hljs-keyword">try</span> {
       <span class="hljs-comment">// Going to yield 3 times, and `fo()` will call `generator.throw()`</span>
       <span class="hljs-comment">// 3 times because superagent will fail every time</span>
       res = <span class="hljs-keyword">yield</span> superagent.get(url);
+      <span class="hljs-keyword">break</span>;
     } <span class="hljs-keyword">catch</span> (error) { <span class="hljs-comment">/* retry */</span> }
   }
   <span class="hljs-comment">// res is undefined - retried 3 times with no results</span>
@@ -1351,11 +1351,10 @@ passes that array to <code>Promise.all()</code>. This means that the HTTP reques
 execute in parallel.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
 fo(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> google = superagent.get(<span class="hljs-string">'http://www.google.com'</span>);
+  <span class="hljs-keyword">const</span> amazon = superagent.get(<span class="hljs-string">'http://www.amazon.com'</span>);
   <span class="hljs-comment">// Parallel HTTP requests!</span>
-  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> [
-        superagent.get(<span class="hljs-string">'http://www.google.com'</span>),
-        superagent.get(<span class="hljs-string">'http://www.amazon.com'</span>)
-      ];
+  <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">yield</span> [google, amazon];
 });
 </code></pre>
 <p>Congratulations, you&#39;ve successfully implemented your own co knockoff!
@@ -1375,7 +1374,7 @@ asynchronous errors.</li>
 <li>Helper functions. Helper functions can be generator functions as well, just
 be sure to use yield.</li>
 </ul>
-<p><br><br><br></p>
+<p><br><br><br><br></p>
 <p>Below is an example of some of the above points in action.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
 <span class="hljs-keyword">const</span> superagent = <span class="hljs-built_in">require</span>(<span class="hljs-string">'superagent'</span>);
@@ -1854,7 +1853,7 @@ even though it isn&#39;t defined using <code>function*</code>, co still accepts 
 <code>generatorFunction</code> as a valid generator function. Like the fake version
 of co you saw in the &quot;Asynchronous Coroutines&quot; chapter, co defines a generator
 function as any object whose <code>constructor.name</code> property is equal to
-&#39;Generator Function&#39;. Regenerator is smart enough to change this property for
+&#39;GeneratorFunction&#39;. Regenerator is smart enough to change this property for
 you.</p>
 <pre><code class="lang-javascript"><span class="hljs-keyword">const</span> co = <span class="hljs-built_in">require</span>(<span class="hljs-string">'co'</span>);
 <span class="hljs-keyword">const</span> regenerator = <span class="hljs-built_in">require</span>(<span class="hljs-string">'regenerator'</span>);

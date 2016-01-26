@@ -13,5 +13,5 @@ even though it isn't defined using `function*`, co still accepts the
 `generatorFunction` as a valid generator function. Like the fake version
 of co you saw in the "Asynchronous Coroutines" chapter, co defines a generator
 function as any object whose `constructor.name` property is equal to
-'Generator Function'. Regenerator is smart enough to change this property for
+'GeneratorFunction'. Regenerator is smart enough to change this property for
 you.
