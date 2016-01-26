@@ -97,7 +97,7 @@ co(function*() {
     console.log(type, '::', arg);
   });
   yield browser.goto(`file://${__dirname}/book.html`).
-    pdf('./80-20-guide-to-es2015-generators.pdf', { marginsType: 1 }).
+    pdf('./bin/80-20-guide-to-es2015-generators.pdf', { marginsType: 1 }).
     end();
 
   console.log('done');

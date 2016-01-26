@@ -1,0 +1,37 @@
+body {
+  background-color: #d8d8d8;
+  font-family: 'Roboto', sans;
+  font-size: 14pt;
+  line-height: 1.5em;
+}
+
+a {
+  text-decoration: none;
+}
+
+.container {
+  margin: auto;
+  margin-top: 50px;
+  width: 1100px;
+  background-color: #fff;
+}
+
+.left {
+  float: left;
+  width: 350px;
+  margin: 25px;
+}
+
+.left img {
+  width: 100%;
+}
+
+.right {
+  float: right;
+  width: 650px;
+  margin: 25px;
+}
+
+h1, h2 {
+  font-family: 'Titillium Web', sans
+}
