@@ -32,7 +32,7 @@
     "compile-book": "node compile.js && tar -czvf ./bin/80-20-guide-to-es2015-generators.tgz chapters/* bin/80-20-guide-to-es2015-generators.pdf",
     "compile-site": "jade ./server/index.jade --out bin",
     "start": "node ./server/index.js",
-    "start-prod": "env PORT=80 sudo ./node_modules/.bin/forever start --uid server ./server/index.js",
+    "start-prod": "sudo env PORT=80 ./node_modules/.bin/forever start --uid server ./server/index.js",
     "stop-prod": "sudo ./node_modules/.bin/forever stop server",
     "test": "mocha ./chapters/*.test.js"
   }
