@@ -3,7 +3,9 @@
 const Keen = require('keen-js');
 const co = require('co');
 const express = require('express');
+const http = require('http');
 const jade = require('jade');
+const superagent = require('superagent');
 
 const app = express();
 
@@ -15,6 +17,8 @@ const client = new Keen({
 app.use((req, res, next) => {
   if (req.originalUrl.indexOf('80-20-guide') !== -1) {
     client.addEvent('track', { type: 'download' });
+    superagent.get('http://s3.amazonaws.com/valeri.karpov.mongodb/80-20-guide-to-es2015-generators.tgz').pipe(res);
+    return;
   }
   next();
 });
