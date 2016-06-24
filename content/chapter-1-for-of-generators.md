@@ -3,8 +3,8 @@ _generator objects_ are iterables, not _generator functions_. In order words,
 you can't run a for/of loop on a generator function.
 
 ```javascript
-fibonacciGenerator[Symbol.iterable]; // Undefined
-fibonacciGenerator(10)[Symbol.iterable]; // Function
+fibonacciGenerator[Symbol.iterator]; // Undefined
+fibonacciGenerator(10)[Symbol.iterator]; // Function
 
 for (const x of fibonacciGenerator) {} // Error!
 for (const x of fibonacciGenerator(10)) {} // Ok
