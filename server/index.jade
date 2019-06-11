@@ -65,13 +65,12 @@ html
 
       div(style="clear: both")
 
-      script(
-        type="text/javascript"
-        src="https://d26b395fwzu5fz.cloudfront.net/3.4.0-rc/keen.min.js")
       script(type="text/javascript").
-        var client = new Keen({
-          projectId: '56a7809190e4bd55b2e26b46',
-          writeKey: '381bed9435318540268d939c397b43d7bc280626dcf166eb1b41f7cc386a5f641e2e25f9b7401bfff7f4e01793306b2988d2e9ab74b9d94adb908e71c6dab926d1bde5f3ff16eee22459c2850db61caefafbb8f9172a60830977b5caa398cd93'
-        });
-        client.addEvent('track', { type: 'visit' }, function(error) {
-        });
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://g0a3nbw0xa.execute-api.us-east-1.amazonaws.com/prod/track', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {};
+        xhr.send(JSON.stringify({
+          path: window.location.pathname,
+          hostname: window.location.hostname
+        }));
