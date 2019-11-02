@@ -24,7 +24,7 @@
     "mocha": "2.3.4",
     "nightmare": "2.1.2",
     "regenerator": "0.8.42",
-    "superagent": "1.6.1",
+    "superagent": "5.1.0",
     "thunkify": "2.1.2"
   },
   "scripts": {
